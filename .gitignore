@@ -56,3 +56,6 @@ mlruns/
 # OS
 .DS_Store
 Thumbs.db
+
+# Test-related
+.coverage
