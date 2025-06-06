@@ -6,10 +6,15 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "en-core-web-lg",
+    "gradio>=5.0.0",
+    "pandas>=2.0.0",
     "pydantic>=2.11.5",
     "smolagents>=1.17.0",
     "spacy>=3.8.7",
 ]
+
+[project.scripts]
+recipe-board = "recipe_board.main:main"
 
 [dependency-groups]
 dev = [
@@ -20,6 +25,3 @@ dev = [
 
 [tool.uv.sources]
 en-core-web-lg = { url = "https://github.com/explosion/spacy-models/releases/download/en_core_web_lg-3.8.0/en_core_web_lg-3.8.0-py3-none-any.whl" }
-
-[project.scripts]
-recipe-board = "recipe_board.main:main"
