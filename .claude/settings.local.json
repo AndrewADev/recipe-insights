@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(uv run pytest:*)"
+      "Bash(uv run pytest:*)",
+      "Bash(mkdir:*)",
+      "Bash(uv run pre-commit run:*)"
     ],
     "deny": []
   }

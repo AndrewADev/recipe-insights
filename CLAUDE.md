@@ -55,3 +55,6 @@ This is an AI-powered recipe analysis tool that helps hobbyist chefs understand 
 - Human-in-the-loop feedback system planned for ambiguous cases
 - Focuses on dependency detection and resource optimization
 - Test data available in `data/` directory with sample recipes
+
+## Development Workflow
+- **IMPORTANT**: Always run `uv run pre-commit run --all-files` before finishing any task to ensure code quality standards are met
