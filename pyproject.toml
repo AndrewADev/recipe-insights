@@ -1,0 +1,7 @@
+[project]
+name = "recipe-board"
+version = "0.1.0"
+description = "Help hobbyist chefs discover and better understand the implicit dependencies in recipes they’d like to cook or bake"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = []

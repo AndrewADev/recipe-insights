@@ -1,0 +1,58 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# Jupyter Notebooks
+.ipynb_checkpoints/
+*/.ipynb_checkpoints/*
+
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+
+# AI/ML Models and artifacts
+*.pt
+*.pth
+*.bin
+*.safetensors
+*.onnx
+*.h5
+*.pkl
+*.joblib
+models/
+checkpoints/
+
+# Transformers cache
+.cache/
+transformers_cache/
+
+# Gradio temporary files
+gradio_cached_examples/
+flagged/
+
+# Datasets 
+data/raw/
+data/processed/
+!data/sample/  # Keep sample data
+
+# Logs and outputs
+logs/
+outputs/
+experiments/
+mlruns/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
