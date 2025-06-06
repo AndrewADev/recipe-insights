@@ -4,9 +4,21 @@ version = "0.1.0"
 description = "Help hobbyist chefs discover and better understand the implicit dependencies in recipes they’d like to cook or bake"
 readme = "README.md"
 requires-python = ">=3.13"
-dependencies = []
+dependencies = [
+    "en-core-web-lg",
+    "pydantic>=2.11.5",
+    "smolagents>=1.17.0",
+    "spacy>=3.8.7",
+]
 
 [dependency-groups]
 dev = [
     "pre-commit>=4.2.0",
+    "pytest>=8.0.0",
 ]
+
+[tool.uv.sources]
+en-core-web-lg = { url = "https://github.com/explosion/spacy-models/releases/download/en_core_web_lg-3.8.0/en_core_web_lg-3.8.0-py3-none-any.whl" }
+
+[project.scripts]
+recipe-board = "recipe_board.main:main"

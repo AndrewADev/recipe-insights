@@ -38,7 +38,7 @@ transformers_cache/
 gradio_cached_examples/
 flagged/
 
-# Datasets 
+# Datasets
 data/raw/
 data/processed/
 !data/sample/  # Keep sample data
