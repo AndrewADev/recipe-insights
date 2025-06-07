@@ -5,10 +5,10 @@ from enum import Enum
 
 
 class IngredientState(Enum):
-    RAW = 'raw'
-    CLEANED = 'cleaned'
-    CHOPPED = 'chopped'
-    COOKED = 'cooked'
+    RAW = "raw"
+    CLEANED = "cleaned"
+    CHOPPED = "chopped"
+    COOKED = "cooked"
     # TODO: how many/what kind of states?
 
 

@@ -29,7 +29,7 @@ def get_ingredients_section(recipe: str) -> str:
         "## Ingredients\n\n- 1 cup flour\n- 2 eggs"
     """
     # Pattern to match from "## Ingredients" to the next "## " heading or end of string
-    pattern = r'## Ingredients\n(.*?)(?=\n## |\Z)'
+    pattern = r"## Ingredients\n(.*?)(?=\n## |\Z)"
 
     match = re.search(pattern, recipe, re.DOTALL)
     if match:
@@ -37,24 +37,28 @@ def get_ingredients_section(recipe: str) -> str:
         if content:
             return f"## Ingredients\n{content}"
         else:
-            return '## Ingredients'
+            return "## Ingredients"
     return None
 
 
 def ingredients_to_dataframe(ingredients: List[Ingredient]) -> pd.DataFrame:
     """Convert list of Ingredient objects to a pandas DataFrame for display."""
     if not ingredients:
-        return pd.DataFrame(columns=['Amount', 'Unit', 'Name', 'Modifiers', 'Raw Text'])
+        return pd.DataFrame(columns=["Amount", "Unit", "Name", "Modifiers", "Raw Text"])
 
     data = []
     for ingredient in ingredients:
-        data.append({
-            'Amount': ingredient.amount if ingredient.amount is not None else '',
-            'Unit': ingredient.unit if ingredient.unit else '',
-            'Name': ingredient.name,
-            'Modifiers': ', '.join(ingredient.modifiers) if ingredient.modifiers else '',
-            'Raw Text': ingredient.raw_text
-        })
+        data.append(
+            {
+                "Amount": ingredient.amount if ingredient.amount is not None else "",
+                "Unit": ingredient.unit if ingredient.unit else "",
+                "Name": ingredient.name,
+                "Modifiers": (
+                    ", ".join(ingredient.modifiers) if ingredient.modifiers else ""
+                ),
+                "Raw Text": ingredient.raw_text,
+            }
+        )
 
     return pd.DataFrame(data)
 
@@ -62,7 +66,7 @@ def ingredients_to_dataframe(ingredients: List[Ingredient]) -> pd.DataFrame:
 def parse_recipe(recipe_text: str) -> pd.DataFrame:
     """Parse a recipe and return ingredients as a DataFrame."""
     if not recipe_text.strip():
-        return pd.DataFrame(columns=['Amount', 'Unit', 'Name', 'Modifiers', 'Raw Text'])
+        return pd.DataFrame(columns=["Amount", "Unit", "Name", "Modifiers", "Raw Text"])
 
     try:
         # Extract ingredients section from full recipe
@@ -80,11 +84,13 @@ def parse_recipe(recipe_text: str) -> pd.DataFrame:
 
     except Exception as e:
         # Return error message in DataFrame format
-        error_df = pd.DataFrame({
-            'Amount': ['Error'],
-            'Unit': [''],
-            'Name': [f'Parsing failed: {str(e)}'],
-            'Modifiers': [''],
-            'Raw Text': ['']
-        })
+        error_df = pd.DataFrame(
+            {
+                "Amount": ["Error"],
+                "Unit": [""],
+                "Name": [f"Parsing failed: {str(e)}"],
+                "Modifiers": [""],
+                "Raw Text": [""],
+            }
+        )
         return error_df
