@@ -8,28 +8,28 @@ from spacy.matcher import Matcher
 
 def setup_ingredient_parser():
     # TODO: Multilingual model load
-    nlp = spacy.load('en_core_web_lg')  # or "de_core_news_lg" for German
+    nlp = spacy.load("en_core_web_lg")  # or "de_core_news_lg" for German
 
     # Create matcher for ingredient patterns
     matcher = Matcher(nlp.vocab)
 
     # Common cooking units
     units = [
-        'cup',
-        'cups',
-        'tbsp',
-        'tsp',
-        'tablespoon',
-        'tablespoons',
-        'teaspoon',
-        'teaspoons',
-        'g',
-        'kg',
-        'ml',
-        'l',
-        'oz',
-        'lb',
-        'lbs',
+        "cup",
+        "cups",
+        "tbsp",
+        "tsp",
+        "tablespoon",
+        "tablespoons",
+        "teaspoon",
+        "teaspoons",
+        "g",
+        "kg",
+        "ml",
+        "l",
+        "oz",
+        "lb",
+        "lbs",
     ]
 
     # Pattern for amount + unit + ingredient
@@ -37,18 +37,18 @@ def setup_ingredient_parser():
     patterns = [
         # Number + unit + ingredient
         [
-            {'LIKE_NUM': True},
-            {'LOWER': {'IN': units}},
-            {'POS': {'IN': ['NOUN', 'ADJ']}, 'OP': '+'},
+            {"LIKE_NUM": True},
+            {"LOWER": {"IN": units}},
+            {"POS": {"IN": ["NOUN", "ADJ"]}, "OP": "+"},
         ],
         # Fraction + unit + ingredient
         [
-            {'TEXT': {'REGEX': r'\d+/\d+'}},
-            {'LOWER': {'IN': units}},
-            {'POS': {'IN': ['NOUN', 'ADJ']}, 'OP': '+'},
+            {"TEXT": {"REGEX": r"\d+/\d+"}},
+            {"LOWER": {"IN": units}},
+            {"POS": {"IN": ["NOUN", "ADJ"]}, "OP": "+"},
         ],
         # Just number + ingredient (implicit unit)
-        [{'LIKE_NUM': True}, {'POS': {'IN': ['NOUN', 'ADJ']}, 'OP': '+'}],
+        [{"LIKE_NUM": True}, {"POS": {"IN": ["NOUN", "ADJ"]}, "OP": "+"}],
     ]
 
     for i, pattern in enumerate(patterns):
@@ -66,9 +66,9 @@ def extract_amount(span) -> Optional[float]:
             except ValueError:
                 pass
         # Handle fractions like "1/2"
-        if '/' in token.text:
+        if "/" in token.text:
             try:
-                parts = token.text.split('/')
+                parts = token.text.split("/")
                 return float(parts[0]) / float(parts[1])
             except:
                 pass
@@ -78,21 +78,21 @@ def extract_amount(span) -> Optional[float]:
 def extract_unit(span) -> Optional[str]:
     """Extract unit from spaCy span"""
     units = {
-        'cup',
-        'cups',
-        'tbsp',
-        'tsp',
-        'tablespoon',
-        'tablespoons',
-        'teaspoon',
-        'teaspoons',
-        'g',
-        'kg',
-        'ml',
-        'l',
-        'oz',
-        'lb',
-        'lbs',
+        "cup",
+        "cups",
+        "tbsp",
+        "tsp",
+        "tablespoon",
+        "tablespoons",
+        "teaspoon",
+        "teaspoons",
+        "g",
+        "kg",
+        "ml",
+        "l",
+        "oz",
+        "lb",
+        "lbs",
     }
 
     for token in span:
@@ -114,7 +114,7 @@ def extract_ingredient_name(span, amount, unit) -> str:
             continue
         tokens.append(token.text)
 
-    return ' '.join(tokens).strip()
+    return " ".join(tokens).strip()
 
 
 def extract_modifiers(original_line: str, span) -> List[str]:
@@ -123,23 +123,23 @@ def extract_modifiers(original_line: str, span) -> List[str]:
 
     # Common cooking modifiers
     cooking_modifiers = {
-        'diced',
-        'chopped',
-        'minced',
-        'sliced',
-        'grated',
-        'crushed',
-        'fresh',
-        'dried',
-        'ground',
-        'whole',
-        'fine',
-        'coarse',
-        'large',
-        'small',
-        'medium',
-        'finely',
-        'roughly',
+        "diced",
+        "chopped",
+        "minced",
+        "sliced",
+        "grated",
+        "crushed",
+        "fresh",
+        "dried",
+        "ground",
+        "whole",
+        "fine",
+        "coarse",
+        "large",
+        "small",
+        "medium",
+        "finely",
+        "roughly",
     }
 
     doc = span.doc
@@ -164,9 +164,9 @@ def extract_ingredient_from_line(line: str, nlp, matcher) -> Optional[Ingredient
                 break
             except ValueError:
                 # Handle fractions
-                if '/' in token.text:
+                if "/" in token.text:
                     try:
-                        parts = token.text.split('/')
+                        parts = token.text.split("/")
                         amount = float(parts[0]) / float(parts[1])
                         break
                     except:
@@ -175,21 +175,21 @@ def extract_ingredient_from_line(line: str, nlp, matcher) -> Optional[Ingredient
     # Extract unit using spaCy analysis - look for tokens that are likely units
     unit = None
     units = {
-        'cup',
-        'cups',
-        'tbsp',
-        'tsp',
-        'tablespoon',
-        'tablespoons',
-        'teaspoon',
-        'teaspoons',
-        'g',
-        'kg',
-        'ml',
-        'l',
-        'oz',
-        'lb',
-        'lbs',
+        "cup",
+        "cups",
+        "tbsp",
+        "tsp",
+        "tablespoon",
+        "tablespoons",
+        "teaspoon",
+        "teaspoons",
+        "g",
+        "kg",
+        "ml",
+        "l",
+        "oz",
+        "lb",
+        "lbs",
     }
 
     for token in doc:
@@ -202,19 +202,19 @@ def extract_ingredient_from_line(line: str, nlp, matcher) -> Optional[Ingredient
     ingredient_tokens = []
 
     # Extract parenthetical content as modifiers using regex + spaCy parsing
-    paren_matches = re.findall(r'\(([^)]+)\)', line)
+    paren_matches = re.findall(r"\(([^)]+)\)", line)
     for paren_content in paren_matches:
         paren_doc = nlp(paren_content)
         for token in paren_doc:
             if token.pos_ in [
-                'ADJ',
-                'NOUN',
-                'VERB',
+                "ADJ",
+                "NOUN",
+                "VERB",
             ]:  # Adjectives, nouns, or past participles
                 modifiers.append(token.text.lower())
 
     # Remove parenthetical content for main parsing
-    clean_line = re.sub(r'\([^)]+\)', '', line).strip()
+    clean_line = re.sub(r"\([^)]+\)", "", line).strip()
     clean_doc = nlp(clean_line)
 
     for token in clean_doc:
@@ -223,24 +223,24 @@ def extract_ingredient_from_line(line: str, nlp, matcher) -> Optional[Ingredient
             continue
 
         # Adjectives describing preparation/state are modifiers
-        if token.pos_ == 'ADJ':
+        if token.pos_ == "ADJ":
             modifiers.append(token.text.lower())
         # Past participles often describe preparation (e.g., "chopped", "diced")
-        elif token.tag_ in ['VBN', 'VBD'] and token.dep_ in ['amod', 'acl']:
+        elif token.tag_ in ["VBN", "VBD"] and token.dep_ in ["amod", "acl"]:
             modifiers.append(token.text.lower())
         # Nouns and proper nouns are likely part of ingredient name
-        elif token.pos_ in ['NOUN', 'PROPN']:
+        elif token.pos_ in ["NOUN", "PROPN"]:
             ingredient_tokens.append(token.text)
         # Include some adjectives that are part of ingredient names (e.g., "olive" in "olive oil")
         elif (
-            token.pos_ == 'ADJ'
-            and token.dep_ in ['compound', 'amod']
-            and token.head.pos_ in ['NOUN', 'PROPN']
+            token.pos_ == "ADJ"
+            and token.dep_ in ["compound", "amod"]
+            and token.head.pos_ in ["NOUN", "PROPN"]
         ):
             ingredient_tokens.append(token.text)
 
     # Build ingredient name from identified tokens
-    name = ' '.join(ingredient_tokens).strip()
+    name = " ".join(ingredient_tokens).strip()
 
     # If we didn't get a good name, fall back to a simpler approach
     if not name:
@@ -250,10 +250,10 @@ def extract_ingredient_from_line(line: str, nlp, matcher) -> Optional[Ingredient
             if (
                 not token.like_num
                 and token.text.lower() not in units
-                and token.pos_ not in ['PUNCT']
+                and token.pos_ not in ["PUNCT"]
             ):
                 fallback_tokens.append(token.text)
-        name = ' '.join(fallback_tokens).strip()
+        name = " ".join(fallback_tokens).strip()
 
     return Ingredient(
         amount=amount,
@@ -297,15 +297,15 @@ def parse_ingredients_from_section(ingredients_text: str) -> List[Ingredient]:
     ingredients = []
 
     # Split by lines and process each ingredient line
-    lines = ingredients_text.split('\n')
+    lines = ingredients_text.split("\n")
 
     for line in lines:
         # Skip headers and empty lines
-        if line.startswith('#') or not line.strip() or not line.strip().startswith('-'):
+        if line.startswith("#") or not line.strip() or not line.strip().startswith("-"):
             continue
 
         # Clean up the line (remove bullet points)
-        clean_line = line.strip().lstrip('- •*').strip()
+        clean_line = line.strip().lstrip("- •*").strip()
 
         ingredient = extract_ingredient_from_line(clean_line, nlp, matcher)
         if ingredient:

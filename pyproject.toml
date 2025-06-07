@@ -18,6 +18,7 @@ recipe-board = "recipe_board.main:main"
 
 [dependency-groups]
 dev = [
+    "black>=25.1.0",
     "pre-commit>=4.2.0",
     "pytest>=8.0.0",
     "pytest-cov>=6.1.1",

@@ -4,10 +4,12 @@ repos:
     hooks:
     -   id: trailing-whitespace
     -   id: end-of-file-fixer
-    -   id: double-quote-string-fixer
 
-# Blocking commits without giving us changed files
-# -   repo: https://github.com/psf/black
-#     rev: 25.1.0
-#     hooks:
-#     -   id: black
+-   repo: local
+    hooks:
+    -   id: black
+        name: black
+        entry: uv run black
+        language: system
+        files: ^src/
+        types: [python]
