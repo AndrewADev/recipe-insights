@@ -1,3 +1,8 @@
+from dotenv import load_dotenv
+
+load_dotenv()
+
+
 def main():
     """Launch the Recipe Board Gradio UI."""
     from recipe_board.gradio_ui import launch_ui
