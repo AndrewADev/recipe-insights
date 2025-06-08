@@ -28,6 +28,10 @@ class Equipment(BaseModel):
     modifiers: Optional[str]
 
 
+class Action(BaseModel):
+    name: str
+
+
 class RecipeStep(BaseModel):
     step_number: int
     instruction: str
