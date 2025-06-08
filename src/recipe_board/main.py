@@ -1,4 +1,5 @@
 from dotenv import load_dotenv
+from wasabi import msg
 
 load_dotenv()
 
@@ -9,7 +10,7 @@ def main():
 
     # with open("./data/claudes-lasagne.md", 'r', encoding='utf-8') as file:
     #     parse_steps(file.read())
-    print("Starting Recipe Board UI...")
+    msg.info("Starting Recipe Board UI...")
     launch_ui()
 
 
