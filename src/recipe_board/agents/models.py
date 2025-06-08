@@ -1,6 +1,7 @@
 import os
 from huggingface_hub import InferenceClient
 from .prompts import parse_equipment_prompt
+from wasabi import msg
 
 model = os.environ["HF_MODEL"]
 
@@ -14,11 +15,11 @@ def parse_recipe_equipment(recipe: str):
         )
     except Exception as e:
         # TODO: retries?
-        print("error creating client:  {e}")
+        msg.fail("error creating client:  {e}")
 
     result = hf_client.text_generation(parse_equipment_prompt + recipe, model=model)
 
     if result is None or result == "":
-        print("No result returned!")
+        msg.warn("No result returned!")
 
     return result
