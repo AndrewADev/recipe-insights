@@ -1,11 +1,11 @@
 import gradio as gr
 
-from recipe_board.agents.recipe_parser import parse_recipe
+from recipe_board.agents.models import parse_recipe_equipment
+from recipe_board.agents.recipe_parser import parse_recipe_ingredients
 
 
-def create_ui():
-    """Create and configure the Gradio interface."""
-    with gr.Blocks(title="Recipe Board - AI Recipe Analyzer") as demo:
+def create_ingredients_tab():
+    with gr.Tab(label="Ingredients") as tab:
         gr.Markdown("# Recipe Board")
         gr.Markdown(
             "Paste your recipe text on the left and click 'Parse Recipe' to analyze the ingredients."
@@ -34,7 +34,9 @@ def create_ui():
 
         # Wire up the parsing function
         parse_button.click(
-            fn=parse_recipe, inputs=[recipe_input], outputs=[ingredients_table]
+            fn=parse_recipe_ingredients,
+            inputs=[recipe_input],
+            outputs=[ingredients_table],
         )
 
         # Example recipes section
@@ -64,6 +66,48 @@ def create_ui():
             ```
             """
             )
+    return tab
+
+
+def create_equipment_tab():
+    with gr.Tab(label="Equipment"):
+        gr.Markdown("# Recipe Board")
+        gr.Markdown(
+            "Paste your recipe text on the left and click 'Parse Recipe' to analyze the equipment."
+        )
+
+        with gr.Row():
+            with gr.Column(scale=1):
+                recipe_input = gr.Textbox(
+                    label="Recipe Text",
+                    placeholder="Paste your recipe here...\n\nExample:\n## Ingredients\n- 2 cups flour\n- 1 large onion, diced\n- 500g ground beef...",
+                    lines=20,
+                    max_lines=30,
+                )
+
+                parse_button = gr.Button("Parse Recipe", variant="primary", size="lg")
+
+            with gr.Column(scale=1):
+                equipment_output = gr.Textbox(
+                    label="Recipe Text",
+                    placeholder="Paste your recipe here...",
+                    lines=20,
+                    max_lines=30,
+                )
+
+        # Wire up the parsing function
+        parse_button.click(
+            fn=parse_recipe_equipment, inputs=[recipe_input], outputs=[equipment_output]
+        )
+
+
+def create_ui():
+    """Create and configure the Gradio interface."""
+    with gr.Blocks(title="Recipe Board - AI Recipe Analyzer") as demo:
+        create_ingredients_tab()
+
+        # with gr.Tab(label="Equipment"):
+        create_equipment_tab()
 
     return demo
 

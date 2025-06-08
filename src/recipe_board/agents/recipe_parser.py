@@ -63,7 +63,7 @@ def ingredients_to_dataframe(ingredients: List[Ingredient]) -> pd.DataFrame:
     return pd.DataFrame(data)
 
 
-def parse_recipe(recipe_text: str) -> pd.DataFrame:
+def parse_recipe_ingredients(recipe_text: str) -> pd.DataFrame:
     """Parse a recipe and return ingredients as a DataFrame."""
     if not recipe_text.strip():
         return pd.DataFrame(columns=["Amount", "Unit", "Name", "Modifiers", "Raw Text"])
