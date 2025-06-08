@@ -1,79 +1,14 @@
 import gradio as gr
+from wasabi import msg
 
 from recipe_board.agents.models import parse_recipe_equipment
-from recipe_board.agents.recipe_parser import parse_recipe_ingredients
 
 
-def create_ingredients_tab():
-    with gr.Tab(label="Ingredients") as tab:
+def create_parser_tab():
+    with gr.Tab(label="Parser"):
         gr.Markdown("# Recipe Board")
         gr.Markdown(
-            "Paste your recipe text on the left and click 'Parse Recipe' to analyze the ingredients."
-        )
-
-        with gr.Row():
-            with gr.Column(scale=1):
-                recipe_input = gr.Textbox(
-                    label="Recipe Text",
-                    placeholder="Paste your recipe here...\n\nExample:\n## Ingredients\n- 2 cups flour\n- 1 large onion, diced\n- 500g ground beef",
-                    lines=20,
-                    max_lines=30,
-                )
-
-                parse_button = gr.Button("Parse Recipe", variant="primary", size="lg")
-
-            with gr.Column(scale=1):
-                ingredients_table = gr.Dataframe(
-                    label="Parsed Ingredients",
-                    headers=["Amount", "Unit", "Name", "Modifiers", "Raw Text"],
-                    datatype=["str", "str", "str", "str", "str"],
-                    row_count=(5, "dynamic"),
-                    col_count=(5, "fixed"),
-                    interactive=False,
-                )
-
-        # Wire up the parsing function
-        parse_button.click(
-            fn=parse_recipe_ingredients,
-            inputs=[recipe_input],
-            outputs=[ingredients_table],
-        )
-
-        # Example recipes section
-        with gr.Accordion("Example Recipes", open=False):
-            gr.Markdown(
-                """
-            Try pasting one of these example recipes:
-
-            **Simple Recipe:**
-            ```
-            ## Ingredients
-            - 2 cups all-purpose flour
-            - 1 tsp salt
-            - 1/2 cup olive oil
-            - 1 large onion, diced
-            ```
-
-            **Complex Recipe:**
-            ```
-            ## Ingredients
-            - 500g ground beef (80/20 lean)
-            - 2 tbsp olive oil
-            - 1 large onion, finely chopped
-            - 3 cloves garlic, minced
-            - 400g can crushed tomatoes
-            - 1/2 cup red wine (optional)
-            ```
-            """
-            )
-    return tab
-
-
-def create_equipment_tab():
-    with gr.Tab(label="Equipment"):
-        gr.Markdown("# Recipe Board")
-        gr.Markdown(
-            "Paste your recipe text on the left and click 'Parse Recipe' to analyze the equipment."
+            "Paste your recipe text on the left and click 'Parse Recipe' to analyze ingredients and equipment."
         )
 
         with gr.Row():
@@ -88,26 +23,76 @@ def create_equipment_tab():
                 parse_button = gr.Button("Parse Recipe", variant="primary", size="lg")
 
             with gr.Column(scale=1):
-                equipment_output = gr.Textbox(
-                    label="Recipe Text",
-                    placeholder="Paste your recipe here...",
+                parsed_output = gr.Textbox(
+                    label="Parsed Results",
+                    placeholder="Parsed ingredients and equipment will appear here...",
                     lines=20,
                     max_lines=30,
                 )
 
         # Wire up the parsing function
         parse_button.click(
-            fn=parse_recipe_equipment, inputs=[recipe_input], outputs=[equipment_output]
+            fn=parse_recipe_equipment, inputs=[recipe_input], outputs=[parsed_output]
+        )
+
+        # Feedback components
+
+        with gr.Group():
+            gr.Markdown("### Feedback")
+            gr.Markdown(
+                "_By submitting feedback, you agree to your prompt and parsed data will be stored for analysis._"
+            )
+            with gr.Row():
+                helpful_btn = gr.Button("👍 Helpful", size="sm")
+                not_helpful_btn = gr.Button("👎 Not Helpful", size="sm")
+
+        feedback_status = gr.Textbox(label="", visible=False)
+
+        def handle_feedback(feedback_type, recipe_input, parsed_output):
+            import json
+            import datetime
+            import os
+
+            # Ensure flagged directory exists
+            os.makedirs("flagged", exist_ok=True)
+
+            feedback_data = {
+                "timestamp": datetime.datetime.now().isoformat(),
+                "feedback": feedback_type,
+                "input": recipe_input,
+                "output": parsed_output,
+            }
+
+            # Save to flagged directory with timestamp
+            filename = f"flagged/feedback_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+            with open(filename, "w") as f:
+                json.dump(feedback_data, f, indent=2)
+
+            msg.info(f"User feedback saved to {filename}: {feedback_type}")
+            return gr.update(
+                value=f"Thanks! Feedback recorded: {feedback_type}", visible=True
+            )
+
+        helpful_btn.click(
+            fn=lambda recipe_input, parsed_output: handle_feedback(
+                "helpful", recipe_input, parsed_output
+            ),
+            inputs=[recipe_input, parsed_output],
+            outputs=[feedback_status],
+        )
+        not_helpful_btn.click(
+            fn=lambda recipe_input, parsed_output: handle_feedback(
+                "not_helpful", recipe_input, parsed_output
+            ),
+            inputs=[recipe_input, parsed_output],
+            outputs=[feedback_status],
         )
 
 
 def create_ui():
     """Create and configure the Gradio interface."""
     with gr.Blocks(title="Recipe Board - AI Recipe Analyzer") as demo:
-        create_ingredients_tab()
-
-        # with gr.Tab(label="Equipment"):
-        create_equipment_tab()
+        create_parser_tab()
 
     return demo
 
