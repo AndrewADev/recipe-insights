@@ -1,5 +1,4 @@
 from recipe_board.agents.recipe_analyzer import parse_ingredients_from_section
-from recipe_board.core.recipe import Ingredient
 
 lasagne_ingredients = """
 ## Ingredients
