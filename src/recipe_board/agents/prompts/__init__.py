@@ -64,24 +64,30 @@ actions=[
 parse_equipment_prompt = f"""
 {briefing}
 
-Now, you will assist one such chef by performing the following parsing the equipment from the recipe.
+Now, you will assist one such chef by parsing the equipment, ingredients, and actions from the recipe.
 
-Please return the equipment, ingredients, and actions in the form of an array of Pydantic models:
-```
-equipment = [
-  Equipment(
-      name="Stand mixer",
-      required=False,
-      modifiers="dough hook attachment"
-  )
-  # Additional equipment...
-]
-```
+Return ONLY valid JSON with this exact structure. Do not include any other text, explanations, or markdown:
 
-{examples}
+{{
+  "equipment": [
+    {{"name": "Stand mixer", "required": true, "modifiers": "dough hook attachment"}},
+    {{"name": "Large mixing bowl", "required": true, "modifiers": null}}
+  ],
+  "ingredients": [
+    {{"name": "flour", "amount": 3, "unit": "cup", "modifiers": "all-purpose"}},
+    {{"name": "salt", "amount": 1, "unit": "tsp", "modifiers": null}}
+  ],
+  "actions": [
+    {{"name": "combine", "description": "mix ingredients together"}},
+    {{"name": "knead", "description": "work dough by hand"}}
+  ]
+}}
 
 IMPORTANT:
-* DO NOT ADD ANY STEPS TO THE USER'S TEXT OR YOU WILL BE FIRED!
+* Return ONLY the JSON object above
+* Do not include markdown code blocks, explanations, or any other text
+* All string values must be properly quoted
+* Use null for empty modifiers, not empty strings
 
-Now, please return the equipment from the following recipe:
+Recipe to parse:
 """

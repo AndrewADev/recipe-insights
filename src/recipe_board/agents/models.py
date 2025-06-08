@@ -8,7 +8,6 @@ model = os.environ["HF_MODEL"]
 
 def parse_recipe_equipment(recipe: str):
     try:
-
         hf_client = InferenceClient(
             provider="hf-inference",
             api_key=os.environ["HF_TOKEN"],
@@ -21,5 +20,25 @@ def parse_recipe_equipment(recipe: str):
 
     if result is None or result == "":
         msg.warn("No result returned!")
+        return "{}"
 
-    return result
+    # Try to parse as JSON and format nicely
+    try:
+        import json
+        import re
+
+        # Strip markdown code blocks if present
+        clean_result = result.strip()
+        if clean_result.startswith("```json"):
+            clean_result = re.sub(r"```json\s*", "", clean_result)
+        if clean_result.startswith("```"):
+            clean_result = re.sub(r"```\s*", "", clean_result)
+        if clean_result.endswith("```"):
+            clean_result = re.sub(r"\s*```$", "", clean_result)
+
+        parsed = json.loads(clean_result)
+        return json.dumps(parsed, indent=2)
+    except json.JSONDecodeError:
+        # Fallback to raw result if not valid JSON
+        msg.warn("Response is not valid JSON, returning raw result")
+        return result
