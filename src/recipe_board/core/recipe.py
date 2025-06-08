@@ -1,4 +1,3 @@
-# Core models (src/models/recipe.py)
 from pydantic import BaseModel
 from typing import List, Optional
 from enum import Enum
@@ -26,7 +25,7 @@ class Ingredient(BaseModel):
 class Equipment(BaseModel):
     name: str
     required: bool = True
-    estimated_size: Optional[str] = None
+    modifiers: Optional[str]
 
 
 class RecipeStep(BaseModel):
