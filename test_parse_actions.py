@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Debug test for parse_actions function using monkeypatch approach."""
+"""Debug test for parse_dependencies function using monkeypatch approach."""
 
-from recipe_board.agents.models import parse_actions
+from recipe_board.agents.models import parse_dependencies
 from recipe_board.core.state import RecipeSessionState
-from recipe_board.core.recipe import Ingredient, Equipment
+from recipe_board.core.recipe import Ingredient, Equipment, BasicAction
 
-def test_parse_actions_success(monkeypatch):
-    """Test parse_actions with mocked agent response (new state-based API)."""
+def test_parse_dependencies_success(monkeypatch):
+    """Test parse_dependencies with mocked agent response (new state-based API)."""
 
     # Mock the agent.run method to return a dict response
     mock_response = {
@@ -43,8 +43,14 @@ def test_parse_actions_success(monkeypatch):
         Equipment(name="whisk", required=True, modifiers=None)
     ]
 
+    # Add basic actions (required for new two-pass approach)
+    state.basic_actions = [
+        BasicAction(verb="mix", sentence="Mix the flour and salt in a large mixing bowl.", sentence_index=0),
+        BasicAction(verb="whisk", sentence="Whisk the ingredients together.", sentence_index=1)
+    ]
+
     # Test the function
-    result = parse_actions(state)
+    result = parse_dependencies(state)
 
     print(f"Result type: {type(result)}")
     print(f"Actions count: {len(result.actions)}")
@@ -54,10 +60,10 @@ def test_parse_actions_success(monkeypatch):
     assert len(result.actions) == 2
     assert result.actions[0].name == "mix"
     assert result.actions[1].name == "whisk"
-    assert result.workflow_step == "actions_parsed"
+    assert result.workflow_step == "dependencies_parsed"
 
-def test_parse_actions_missing_env_vars(monkeypatch):
-    """Test parse_actions when environment variables are missing."""
+def test_parse_dependencies_missing_env_vars(monkeypatch):
+    """Test parse_dependencies when environment variables are missing."""
     import pytest
 
     # Remove the environment variables
@@ -74,6 +80,11 @@ def test_parse_actions_missing_env_vars(monkeypatch):
         Equipment(name="mixing bowl", required=True, modifiers="large")
     ]
 
+    # Add basic actions (required for new two-pass approach)
+    state.basic_actions = [
+        BasicAction(verb="mix", sentence="Mix the flour in a large mixing bowl.", sentence_index=0)
+    ]
+
     # Test that it raises ValueError when env vars are missing
     with pytest.raises(ValueError, match="Failed to create agent"):
-        parse_actions(state)
+        parse_dependencies(state)

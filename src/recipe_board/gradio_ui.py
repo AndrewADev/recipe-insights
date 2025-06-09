@@ -3,7 +3,7 @@ from wasabi import msg
 
 from recipe_board.agents.models import (
     parse_recipe,
-    parse_actions,
+    parse_dependencies,
 )
 from recipe_board.agents.graph_tools import (
     create_dependency_graph,
@@ -30,8 +30,11 @@ def create_parser_tab(session_state):
                 )
 
                 parse_button = gr.Button("Parse Recipe", variant="primary", size="lg")
-                parse_actions_button = gr.Button(
-                    "Parse Actions", variant="secondary", size="lg", interactive=False
+                parse_dependencies_button = gr.Button(
+                    "Parse Dependencies",
+                    variant="secondary",
+                    size="lg",
+                    interactive=False,
                 )
                 visualize_button = gr.Button(
                     "Visualize Dependencies",
@@ -46,15 +49,22 @@ def create_parser_tab(session_state):
                         parsed_output = gr.Textbox(
                             label="Parsed Results",
                             placeholder="Parsed ingredients and equipment will appear here...",
-                            lines=10,
-                            max_lines=15,
+                            lines=8,
+                            max_lines=12,
+                        )
+
+                        basic_actions_output = gr.Textbox(
+                            label="Basic Actions",
+                            placeholder="Basic cooking actions (verbs) will appear here after recipe parsing...",
+                            lines=6,
+                            max_lines=10,
                         )
 
                         actions_output = gr.Textbox(
-                            label="Parsed Actions",
-                            placeholder="Parsed actions will appear here after ingredients and equipment are processed...",
-                            lines=10,
-                            max_lines=15,
+                            label="Action Dependencies",
+                            placeholder="Action dependencies will appear here after dependency parsing...",
+                            lines=8,
+                            max_lines=12,
                         )
 
                     with gr.Tab(
@@ -72,7 +82,7 @@ def create_parser_tab(session_state):
                                 "Download as JSON", visible=False, size="sm"
                             )
 
-        def parse_recipe_and_enable_actions(recipe_text, state):
+        def parse_recipe_and_enable_dependencies(recipe_text, state):
             """Parse recipe and return formatted results, updated state, and button state."""
             try:
                 # Update state with new recipe text and parse
@@ -87,18 +97,32 @@ def create_parser_tab(session_state):
                 equipment_display = updated_state.format_equipment_for_display()
                 combined_output = f"## Ingredients\n{ingredients_display}\n\n## Equipment\n{equipment_display}"
 
-                # Check if parsing was successful
-                is_valid = updated_state.has_parsed_data()
+                # Format basic actions
+                basic_actions_display = updated_state.format_basic_actions_for_display()
 
-                return combined_output, updated_state, gr.update(interactive=is_valid)
+                # Check if parsing was successful (enable dependencies button if we have basic actions)
+                has_basic_data = updated_state.has_parsed_data()
+                has_basic_actions = len(updated_state.basic_actions) > 0
+
+                return (
+                    combined_output,
+                    basic_actions_display,
+                    updated_state,
+                    gr.update(interactive=has_basic_data and has_basic_actions),
+                )
 
             except Exception as e:
                 msg.fail(f"Error parsing recipe: {e}")
                 error_msg = f"Error parsing recipe: {str(e)}"
-                return error_msg, state, gr.update(interactive=False)
+                return (
+                    error_msg,
+                    "Error: No basic actions found",
+                    state,
+                    gr.update(interactive=False),
+                )
 
-        def parse_actions_from_state(state):
-            """Parse actions from recipe state."""
+        def parse_dependencies_from_state(state):
+            """Parse action dependencies from recipe state."""
             if not state.has_parsed_data():
                 return (
                     "Error: No ingredients or equipment found. Please parse recipe first.",
@@ -106,9 +130,16 @@ def create_parser_tab(session_state):
                     gr.update(interactive=False),  # Keep visualize button disabled
                 )
 
+            if not state.basic_actions:
+                return (
+                    "Error: No basic actions found. Please parse recipe first.",
+                    state,
+                    gr.update(interactive=False),
+                )
+
             try:
-                # Parse actions using state-based function
-                updated_state = parse_actions(state)
+                # Parse dependencies using state-based function
+                updated_state = parse_dependencies(state)
 
                 # Format actions for display
                 actions_display = updated_state.format_actions_for_display()
@@ -124,22 +155,27 @@ def create_parser_tab(session_state):
 
             except ValueError as e:
                 return (
-                    f"Error parsing actions: {str(e)}",
+                    f"Error parsing dependencies: {str(e)}",
                     state,
                     gr.update(interactive=False),
                 )
             except Exception as e:
-                msg.fail(f"Unexpected error in actions parsing: {e}")
+                msg.fail(f"Unexpected error in dependencies parsing: {e}")
                 return (
-                    f"Unexpected error occurred while parsing actions: {str(e)}",
+                    f"Unexpected error occurred while parsing dependencies: {str(e)}",
                     state,
                     gr.update(interactive=False),
                 )
 
         parse_button.click(
-            fn=parse_recipe_and_enable_actions,
+            fn=parse_recipe_and_enable_dependencies,
             inputs=[recipe_input, session_state],
-            outputs=[parsed_output, session_state, parse_actions_button],
+            outputs=[
+                parsed_output,
+                basic_actions_output,
+                session_state,
+                parse_dependencies_button,
+            ],
         )
 
         def create_dependency_visualization(state):
@@ -219,8 +255,8 @@ def create_parser_tab(session_state):
                 msg.warn(f"Error generating JSON download: {e}")
                 return None
 
-        parse_actions_button.click(
-            fn=parse_actions_from_state,
+        parse_dependencies_button.click(
+            fn=parse_dependencies_from_state,
             inputs=[session_state],
             outputs=[actions_output, session_state, visualize_button],
         )
@@ -256,7 +292,9 @@ def create_parser_tab(session_state):
 
         feedback_status = gr.Textbox(label="", visible=False)
 
-        def handle_feedback(feedback_type, state, parsed_output, actions_output):
+        def handle_feedback(
+            feedback_type, state, parsed_output, basic_actions_output, actions_output
+        ):
             import json
             import datetime
             import os
@@ -270,6 +308,7 @@ def create_parser_tab(session_state):
                 "input": state.raw_text,
                 "state": state.to_dict(),
                 "output_display": parsed_output,
+                "basic_actions_display": basic_actions_output,
                 "actions_display": actions_output,
             }
 
@@ -284,17 +323,21 @@ def create_parser_tab(session_state):
             )
 
         helpful_btn.click(
-            fn=lambda state, parsed_output, actions_output: handle_feedback(
-                "helpful", state, parsed_output, actions_output
+            fn=lambda state, parsed_output, basic_actions_output, actions_output: handle_feedback(
+                "helpful", state, parsed_output, basic_actions_output, actions_output
             ),
-            inputs=[session_state, parsed_output, actions_output],
+            inputs=[session_state, parsed_output, basic_actions_output, actions_output],
             outputs=[feedback_status],
         )
         not_helpful_btn.click(
-            fn=lambda state, parsed_output, actions_output: handle_feedback(
-                "not_helpful", state, parsed_output, actions_output
+            fn=lambda state, parsed_output, basic_actions_output, actions_output: handle_feedback(
+                "not_helpful",
+                state,
+                parsed_output,
+                basic_actions_output,
+                actions_output,
             ),
-            inputs=[session_state, parsed_output, actions_output],
+            inputs=[session_state, parsed_output, basic_actions_output, actions_output],
             outputs=[feedback_status],
         )
 

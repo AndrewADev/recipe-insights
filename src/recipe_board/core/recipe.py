@@ -30,6 +30,14 @@ class Equipment(BaseModel):
     modifiers: Optional[str]
 
 
+class BasicAction(BaseModel):
+    """Represents a cooking verb identified in the first parsing pass."""
+
+    verb: str
+    sentence: str
+    sentence_index: int  # For reference back to original text
+
+
 class Action(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     name: str
