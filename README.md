@@ -1,3 +1,13 @@
+---
+title: Recipe Board
+emoji: 📉
+colorFrom: yellow
+colorTo: purple
+sdk: gradio
+sdk_version: 5.0.0
+app_file: src/recipe_board/main.py
+pinned: false
+---
 # RecipeBoard
 
 A tool to help hobbyist chefs discover and better understand the implicit dependencies in recipes they’d like to cook or bake.
