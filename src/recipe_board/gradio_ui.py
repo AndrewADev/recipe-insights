@@ -5,6 +5,10 @@ from recipe_board.agents.models import (
     parse_recipe,
     parse_actions,
 )
+from recipe_board.agents.graph_tools import (
+    create_dependency_graph,
+    generate_graph_download_data,
+)
 from recipe_board.core.state import RecipeSessionState
 
 
@@ -29,21 +33,44 @@ def create_parser_tab(session_state):
                 parse_actions_button = gr.Button(
                     "Parse Actions", variant="secondary", size="lg", interactive=False
                 )
+                visualize_button = gr.Button(
+                    "Visualize Dependencies",
+                    variant="primary",
+                    size="lg",
+                    interactive=False,
+                )
 
             with gr.Column(scale=1):
-                parsed_output = gr.Textbox(
-                    label="Parsed Results",
-                    placeholder="Parsed ingredients and equipment will appear here...",
-                    lines=10,
-                    max_lines=15,
-                )
+                with gr.Tabs() as results_tabs:
+                    with gr.Tab(label="Parsing", id="parsing_tab") as parsing_tab:
+                        parsed_output = gr.Textbox(
+                            label="Parsed Results",
+                            placeholder="Parsed ingredients and equipment will appear here...",
+                            lines=10,
+                            max_lines=15,
+                        )
 
-                actions_output = gr.Textbox(
-                    label="Parsed Actions",
-                    placeholder="Parsed actions will appear here after ingredients and equipment are processed...",
-                    lines=10,
-                    max_lines=15,
-                )
+                        actions_output = gr.Textbox(
+                            label="Parsed Actions",
+                            placeholder="Parsed actions will appear here after ingredients and equipment are processed...",
+                            lines=10,
+                            max_lines=15,
+                        )
+
+                    with gr.Tab(
+                        label="Visualization", id="visualization_tab"
+                    ) as visualization_tab:
+                        graph_plot = gr.Plot(
+                            label="Recipe Dependency Graph", value=None
+                        )
+
+                        with gr.Row():
+                            download_html_btn = gr.DownloadButton(
+                                "Download as HTML", visible=False, size="sm"
+                            )
+                            download_json_btn = gr.DownloadButton(
+                                "Download as JSON", visible=False, size="sm"
+                            )
 
         def parse_recipe_and_enable_actions(recipe_text, state):
             """Parse recipe and return formatted results, updated state, and button state."""
@@ -76,6 +103,7 @@ def create_parser_tab(session_state):
                 return (
                     "Error: No ingredients or equipment found. Please parse recipe first.",
                     state,
+                    gr.update(interactive=False),  # Keep visualize button disabled
                 )
 
             try:
@@ -85,15 +113,27 @@ def create_parser_tab(session_state):
                 # Format actions for display
                 actions_display = updated_state.format_actions_for_display()
 
-                return actions_display, updated_state
+                # Enable visualize button if actions were found
+                has_actions = len(updated_state.actions) > 0
+
+                return (
+                    actions_display,
+                    updated_state,
+                    gr.update(interactive=has_actions),
+                )
 
             except ValueError as e:
-                return f"Error parsing actions: {str(e)}", state
+                return (
+                    f"Error parsing actions: {str(e)}",
+                    state,
+                    gr.update(interactive=False),
+                )
             except Exception as e:
                 msg.fail(f"Unexpected error in actions parsing: {e}")
                 return (
                     f"Unexpected error occurred while parsing actions: {str(e)}",
                     state,
+                    gr.update(interactive=False),
                 )
 
         parse_button.click(
@@ -102,10 +142,105 @@ def create_parser_tab(session_state):
             outputs=[parsed_output, session_state, parse_actions_button],
         )
 
+        def create_dependency_visualization(state):
+            """Create and display dependency graph."""
+            if not state.actions:
+                return (
+                    None,
+                    gr.update(visible=False),
+                    gr.update(visible=False),
+                    gr.update(selected="parsing_tab"),  # Stay on parsing tab
+                )
+
+            try:
+                # Generate the graph
+                fig = create_dependency_graph(state)
+
+                # Generate download data
+                download_data = generate_graph_download_data(fig)
+
+                # Show download buttons if data is available
+                html_visible = download_data.get("html") is not None
+                json_visible = download_data.get("json") is not None
+
+                return (
+                    fig,
+                    gr.update(visible=html_visible),
+                    gr.update(visible=json_visible),
+                    gr.update(
+                        selected="visualization_tab"
+                    ),  # Switch to visualization tab
+                )
+
+            except Exception as e:
+                msg.fail(f"Error creating dependency graph: {e}")
+                return (
+                    None,
+                    gr.update(visible=False),
+                    gr.update(visible=False),
+                    gr.update(selected="parsing_tab"),
+                )
+
+        def download_graph_html(state):
+            """Generate HTML file for download."""
+            if not state.actions:
+                return None
+            try:
+                fig = create_dependency_graph(state)
+                import tempfile
+                import os
+
+                # Create temporary file
+                with tempfile.NamedTemporaryFile(
+                    mode="w", suffix=".html", delete=False
+                ) as f:
+                    f.write(fig.to_html(include_plotlyjs=True))
+                    return f.name
+            except Exception as e:
+                msg.warn(f"Error generating HTML download: {e}")
+                return None
+
+        def download_graph_json(state):
+            """Generate JSON file for download."""
+            if not state.actions:
+                return None
+            try:
+                fig = create_dependency_graph(state)
+                import tempfile
+                import os
+
+                # Create temporary file
+                with tempfile.NamedTemporaryFile(
+                    mode="w", suffix=".json", delete=False
+                ) as f:
+                    f.write(fig.to_json())
+                    return f.name
+            except Exception as e:
+                msg.warn(f"Error generating JSON download: {e}")
+                return None
+
         parse_actions_button.click(
             fn=parse_actions_from_state,
             inputs=[session_state],
-            outputs=[actions_output, session_state],
+            outputs=[actions_output, session_state, visualize_button],
+        )
+
+        visualize_button.click(
+            fn=create_dependency_visualization,
+            inputs=[session_state],
+            outputs=[graph_plot, download_html_btn, download_json_btn, results_tabs],
+        )
+
+        download_html_btn.click(
+            fn=download_graph_html,
+            inputs=[session_state],
+            outputs=None,
+        )
+
+        download_json_btn.click(
+            fn=download_graph_json,
+            inputs=[session_state],
+            outputs=None,
         )
 
         # Feedback components
