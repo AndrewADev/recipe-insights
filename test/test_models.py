@@ -1,7 +1,7 @@
 import json
 import pytest
 from recipe_board.agents.models import parse_recipe, parse_dependencies, ingredients_and_equipment_from_parsed_recipe
-from recipe_board.core.state import RecipeSessionState
+from recipe_board.core.state import RecipeSessionState, ParsingState
 from recipe_board.core.recipe import Ingredient, Equipment, BasicAction
 
 
@@ -249,7 +249,7 @@ class TestParseRecipeEquipment:
         # Verify result is RecipeSessionState
         assert isinstance(result, RecipeSessionState)
         assert result.raw_text == "test recipe"
-        assert result.workflow_step == "parsed"
+        assert result.parsing_state == ParsingState.COMPLETED
 
         # Verify basic actions were parsed
         assert len(result.basic_actions) == 1
@@ -287,7 +287,7 @@ class TestParseRecipeEquipment:
         assert len(result.ingredients) == 0
         assert len(result.equipment) == 0
         assert len(result.basic_actions) == 0
-        assert result.workflow_step == "parsed"
+        assert result.parsing_state == ParsingState.COMPLETED
 
     def test_parse_recipe_invalid_json(self, monkeypatch):
         """Test handling of invalid JSON response."""

@@ -1,6 +1,17 @@
 from dataclasses import dataclass, field
 from typing import List, Dict, Any
+from enum import Enum
 from recipe_board.core.recipe import Ingredient, Equipment, Action, BasicAction
+
+
+class ParsingState(Enum):
+    """States of the recipe parsing workflow."""
+
+    INITIAL = "initial"
+    PARSING_RECIPE = "parsing_recipe"
+    PARSING_DEPENDENCIES = "parsing_dependencies"
+    COMPLETED = "completed"
+    DEPENDENCIES_ERROR = "dependencies_error"
 
 
 @dataclass
@@ -18,7 +29,7 @@ class RecipeSessionState:
     equipment: List[Equipment] = field(default_factory=list)
     basic_actions: List[BasicAction] = field(default_factory=list)
     actions: List[Action] = field(default_factory=list)
-    workflow_step: str = "initial"
+    parsing_state: ParsingState = ParsingState.INITIAL
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert state to dictionary for JSON serialization/UI display."""
@@ -28,7 +39,7 @@ class RecipeSessionState:
             "equipment": [eq.model_dump() for eq in self.equipment],
             "basic_actions": [ba.model_dump() for ba in self.basic_actions],
             "actions": [action.model_dump() for action in self.actions],
-            "workflow_step": self.workflow_step,
+            "parsing_state": self.parsing_state.value,
         }
 
     def has_parsed_data(self) -> bool:
@@ -42,7 +53,7 @@ class RecipeSessionState:
         self.equipment = []
         self.basic_actions = []
         self.actions = []
-        self.workflow_step = "initial"
+        self.parsing_state = ParsingState.INITIAL
 
     def format_ingredients_for_display(self) -> str:
         """Format ingredients list for UI display."""

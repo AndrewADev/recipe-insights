@@ -3,7 +3,7 @@ Integration test for end-to-end graph visualization workflow.
 """
 
 import pytest
-from recipe_board.core.state import RecipeSessionState
+from recipe_board.core.state import RecipeSessionState, ParsingState
 from recipe_board.core.recipe import Ingredient, Equipment, Action
 from recipe_board.agents.graph_tools import create_dependency_graph
 import plotly.graph_objects as go
@@ -17,7 +17,7 @@ class TestGraphIntegration:
         # Create a realistic recipe state
         state = RecipeSessionState()
         state.raw_text = "Mix flour and salt in a large bowl using a whisk. Bake in preheated oven."
-        state.workflow_step = "actions_parsed"
+        state.parsing_state = ParsingState.COMPLETED
 
         # Add ingredients
         flour = Ingredient(

@@ -9,7 +9,7 @@ from recipe_board.agents.graph_tools import (
     create_dependency_graph,
     generate_graph_download_data,
 )
-from recipe_board.core.state import RecipeSessionState
+from recipe_board.core.state import RecipeSessionState, ParsingState
 
 
 def create_parser_tab(session_state):
@@ -30,12 +30,6 @@ def create_parser_tab(session_state):
                 )
 
                 parse_button = gr.Button("Parse Recipe", variant="primary", size="lg")
-                parse_dependencies_button = gr.Button(
-                    "Parse Dependencies",
-                    variant="secondary",
-                    size="lg",
-                    interactive=False,
-                )
                 visualize_button = gr.Button(
                     "Visualize Dependencies",
                     variant="primary",
@@ -82,99 +76,176 @@ def create_parser_tab(session_state):
                                 "Download as JSON", visible=False, size="sm"
                             )
 
-        def parse_recipe_and_enable_dependencies(recipe_text, state):
-            """Parse recipe and return formatted results, updated state, and button state."""
+        def get_button_text(parsing_state):
+            """Get button text based on current parsing state."""
+            if parsing_state == ParsingState.INITIAL:
+                return "Parse Recipe"
+            elif parsing_state == ParsingState.PARSING_RECIPE:
+                return "Parsing..."
+            elif parsing_state == ParsingState.PARSING_DEPENDENCIES:
+                return "Parsing Dependencies..."
+            elif parsing_state == ParsingState.DEPENDENCIES_ERROR:
+                return "Retry Parsing"
+            elif parsing_state == ParsingState.COMPLETED:
+                return "Parse Recipe"
+            else:
+                return "Parse Recipe"
+
+        def combined_parse_function(recipe_text, state):
+            """Combined parsing function that handles recipe parsing and auto-triggers dependency parsing."""
+
+            # Handle different button states
+            if state.parsing_state == ParsingState.DEPENDENCIES_ERROR:
+                # Retry dependency parsing only
+                return retry_dependency_parsing(state)
+
+            # Initial parsing or new recipe
             try:
-                # Update state with new recipe text and parse
+                # Step 1: Parse recipe
                 state.clear()
                 state.raw_text = recipe_text
+                state.parsing_state = ParsingState.PARSING_RECIPE
 
-                # Parse using new state-based function
+                # Parse using state-based function
                 updated_state = parse_recipe(recipe_text)
+                updated_state.parsing_state = ParsingState.PARSING_RECIPE
 
                 # Format output for display
                 ingredients_display = updated_state.format_ingredients_for_display()
                 equipment_display = updated_state.format_equipment_for_display()
                 combined_output = f"## Ingredients\n{ingredients_display}\n\n## Equipment\n{equipment_display}"
-
-                # Format basic actions
                 basic_actions_display = updated_state.format_basic_actions_for_display()
 
-                # Check if parsing was successful (enable dependencies button if we have basic actions)
+                # Check if recipe parsing was successful
                 has_basic_data = updated_state.has_parsed_data()
                 has_basic_actions = len(updated_state.basic_actions) > 0
 
-                return (
-                    combined_output,
-                    basic_actions_display,
-                    updated_state,
-                    gr.update(interactive=has_basic_data and has_basic_actions),
-                )
+                if not (has_basic_data and has_basic_actions):
+                    # Recipe parsing failed
+                    updated_state.parsing_state = ParsingState.INITIAL
+                    return (
+                        combined_output,
+                        basic_actions_display,
+                        "",  # Empty actions output
+                        updated_state,
+                        gr.update(
+                            value=get_button_text(updated_state.parsing_state),
+                            interactive=True,
+                        ),
+                        gr.update(interactive=False),  # Keep visualize disabled
+                    )
+
+                # Step 2: Auto-trigger dependency parsing
+                updated_state.parsing_state = ParsingState.PARSING_DEPENDENCIES
+
+                try:
+                    # Parse dependencies
+                    final_state = parse_dependencies(updated_state)
+                    final_state.parsing_state = ParsingState.COMPLETED
+
+                    # Format actions for display
+                    actions_display = final_state.format_actions_for_display()
+                    has_actions = len(final_state.actions) > 0
+
+                    return (
+                        combined_output,
+                        basic_actions_display,
+                        actions_display,
+                        final_state,
+                        gr.update(
+                            value=get_button_text(final_state.parsing_state),
+                            interactive=True,
+                        ),
+                        gr.update(interactive=has_actions),
+                    )
+
+                except Exception as dep_error:
+                    # Dependency parsing failed - set retry state
+                    updated_state.parsing_state = ParsingState.DEPENDENCIES_ERROR
+                    msg.fail(f"Error parsing dependencies: {dep_error}")
+
+                    return (
+                        combined_output,
+                        basic_actions_display,
+                        f"Error parsing dependencies: {str(dep_error)}",
+                        updated_state,
+                        gr.update(
+                            value=get_button_text(updated_state.parsing_state),
+                            interactive=True,
+                        ),
+                        gr.update(interactive=False),
+                    )
 
             except Exception as e:
+                # Recipe parsing failed
                 msg.fail(f"Error parsing recipe: {e}")
+                state.parsing_state = ParsingState.INITIAL
                 error_msg = f"Error parsing recipe: {str(e)}"
                 return (
                     error_msg,
                     "Error: No basic actions found",
+                    "",
                     state,
+                    gr.update(
+                        value=get_button_text(state.parsing_state), interactive=True
+                    ),
                     gr.update(interactive=False),
                 )
 
-        def parse_dependencies_from_state(state):
-            """Parse action dependencies from recipe state."""
-            if not state.has_parsed_data():
-                return (
-                    "Error: No ingredients or equipment found. Please parse recipe first.",
-                    state,
-                    gr.update(interactive=False),  # Keep visualize button disabled
-                )
-
-            if not state.basic_actions:
-                return (
-                    "Error: No basic actions found. Please parse recipe first.",
-                    state,
-                    gr.update(interactive=False),
-                )
-
+        def retry_dependency_parsing(state):
+            """Retry dependency parsing after an error."""
             try:
-                # Parse dependencies using state-based function
-                updated_state = parse_dependencies(state)
+                state.parsing_state = ParsingState.PARSING_DEPENDENCIES
 
-                # Format actions for display
+                # Parse dependencies
+                updated_state = parse_dependencies(state)
+                updated_state.parsing_state = ParsingState.COMPLETED
+
+                # Format existing displays
+                ingredients_display = updated_state.format_ingredients_for_display()
+                equipment_display = updated_state.format_equipment_for_display()
+                combined_output = f"## Ingredients\n{ingredients_display}\n\n## Equipment\n{equipment_display}"
+                basic_actions_display = updated_state.format_basic_actions_for_display()
                 actions_display = updated_state.format_actions_for_display()
 
-                # Enable visualize button if actions were found
                 has_actions = len(updated_state.actions) > 0
 
                 return (
+                    combined_output,
+                    basic_actions_display,
                     actions_display,
                     updated_state,
+                    gr.update(
+                        value=get_button_text(updated_state.parsing_state),
+                        interactive=True,
+                    ),
                     gr.update(interactive=has_actions),
                 )
 
-            except ValueError as e:
-                return (
-                    f"Error parsing dependencies: {str(e)}",
-                    state,
-                    gr.update(interactive=False),
-                )
             except Exception as e:
-                msg.fail(f"Unexpected error in dependencies parsing: {e}")
+                # Still failing - keep retry state
+                msg.fail(f"Error retrying dependency parsing: {e}")
                 return (
-                    f"Unexpected error occurred while parsing dependencies: {str(e)}",
+                    state.format_ingredients_for_display(),  # Keep existing displays
+                    state.format_basic_actions_for_display(),
+                    f"Error retrying dependency parsing: {str(e)}",
                     state,
+                    gr.update(
+                        value=get_button_text(state.parsing_state), interactive=True
+                    ),
                     gr.update(interactive=False),
                 )
 
         parse_button.click(
-            fn=parse_recipe_and_enable_dependencies,
+            fn=combined_parse_function,
             inputs=[recipe_input, session_state],
             outputs=[
                 parsed_output,
                 basic_actions_output,
+                actions_output,
                 session_state,
-                parse_dependencies_button,
+                parse_button,
+                visualize_button,
             ],
         )
 
@@ -254,12 +325,6 @@ def create_parser_tab(session_state):
             except Exception as e:
                 msg.warn(f"Error generating JSON download: {e}")
                 return None
-
-        parse_dependencies_button.click(
-            fn=parse_dependencies_from_state,
-            inputs=[session_state],
-            outputs=[actions_output, session_state, visualize_button],
-        )
 
         visualize_button.click(
             fn=create_dependency_visualization,

@@ -11,7 +11,7 @@ from .tools import (
 )
 from wasabi import msg
 from ..core.recipe import Ingredient, Equipment, Action, BasicAction
-from ..core.state import RecipeSessionState
+from ..core.state import RecipeSessionState, ParsingState
 
 model = os.environ["HF_MODEL"]
 
@@ -28,7 +28,7 @@ def parse_recipe(recipe: str) -> RecipeSessionState:
     """
     state = RecipeSessionState()
     state.raw_text = recipe
-    state.workflow_step = "parsing"
+    state.parsing_state = ParsingState.PARSING_RECIPE
 
     try:
         hf_client = InferenceClient(
@@ -70,7 +70,7 @@ def parse_recipe(recipe: str) -> RecipeSessionState:
         state.ingredients = ingredients
         state.equipment = equipment
         state.basic_actions = basic_actions
-        state.workflow_step = "parsed"
+        state.parsing_state = ParsingState.COMPLETED
 
         # Log successful parsing results
         msg.good(
