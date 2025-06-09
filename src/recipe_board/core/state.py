@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from typing import List, Dict, Any
-from recipe_board.core.recipe import Ingredient, Equipment, Action
+from recipe_board.core.recipe import Ingredient, Equipment, Action, BasicAction
 
 
 @dataclass
@@ -16,6 +16,7 @@ class RecipeSessionState:
     raw_text: str = ""
     ingredients: List[Ingredient] = field(default_factory=list)
     equipment: List[Equipment] = field(default_factory=list)
+    basic_actions: List[BasicAction] = field(default_factory=list)
     actions: List[Action] = field(default_factory=list)
     workflow_step: str = "initial"
 
@@ -25,6 +26,7 @@ class RecipeSessionState:
             "raw_text": self.raw_text,
             "ingredients": [ing.model_dump() for ing in self.ingredients],
             "equipment": [eq.model_dump() for eq in self.equipment],
+            "basic_actions": [ba.model_dump() for ba in self.basic_actions],
             "actions": [action.model_dump() for action in self.actions],
             "workflow_step": self.workflow_step,
         }
@@ -38,6 +40,7 @@ class RecipeSessionState:
         self.raw_text = ""
         self.ingredients = []
         self.equipment = []
+        self.basic_actions = []
         self.actions = []
         self.workflow_step = "initial"
 
@@ -73,6 +76,17 @@ class RecipeSessionState:
             if eq.required:
                 display += " [required]"
             formatted.append(display)
+
+        return "\n".join(f"- {item}" for item in formatted)
+
+    def format_basic_actions_for_display(self) -> str:
+        """Format basic actions list for UI display."""
+        if not self.basic_actions:
+            return "No basic actions parsed yet."
+
+        formatted = []
+        for ba in self.basic_actions:
+            formatted.append(f"'{ba.verb}' in: {ba.sentence[:80]}...")
 
         return "\n".join(f"- {item}" for item in formatted)
 

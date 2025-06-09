@@ -1,5 +1,5 @@
 from recipe_board.core.state import RecipeSessionState
-from recipe_board.core.recipe import Ingredient, Equipment, Action
+from recipe_board.core.recipe import Ingredient, Equipment, Action, BasicAction
 
 
 class TestRecipeSessionState:
@@ -84,6 +84,7 @@ class TestRecipeSessionState:
             "raw_text": "",
             "ingredients": [],
             "equipment": [],
+            "basic_actions": [],
             "actions": [],
             "workflow_step": "initial"
         }
@@ -99,6 +100,9 @@ class TestRecipeSessionState:
         state.equipment = [
             Equipment(name="mixing bowl", required=True, modifiers="large")
         ]
+        state.basic_actions = [
+            BasicAction(verb="mix", sentence="Mix flour in bowl.", sentence_index=0)
+        ]
         state.actions = [
             Action(name="mix", ingredient_ids=["ing1"], equipment_ids="eq1")
         ]
@@ -110,12 +114,14 @@ class TestRecipeSessionState:
         assert "raw_text" in result
         assert "ingredients" in result
         assert "equipment" in result
+        assert "basic_actions" in result
         assert "actions" in result
         assert "workflow_step" in result
 
         assert result["raw_text"] == "Test recipe"
         assert result["workflow_step"] == "parsed"
         assert len(result["ingredients"]) == 1
+        assert len(result["basic_actions"]) == 1
         assert len(result["equipment"]) == 1
         assert len(result["actions"]) == 1
 

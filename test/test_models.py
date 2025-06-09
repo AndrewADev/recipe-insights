@@ -1,7 +1,8 @@
 import json
 import pytest
-from recipe_board.agents.models import parse_recipe, ingredients_and_equipment_from_parsed_recipe
+from recipe_board.agents.models import parse_recipe, parse_dependencies, ingredients_and_equipment_from_parsed_recipe
 from recipe_board.core.state import RecipeSessionState
+from recipe_board.core.recipe import Ingredient, Equipment, BasicAction
 
 
 class TestIngredientsAndEquipmentFromParsedRecipe:
@@ -228,6 +229,9 @@ class TestParseRecipeEquipment:
   ],
   "ingredients": [
     {"name": "flour", "amount": 2, "unit": "cups", "modifiers": null}
+  ],
+  "basic_actions": [
+    {"verb": "mix", "sentence": "Mix flour in large bowl.", "sentence_index": 0}
   ]
 }
 ```"""
@@ -247,6 +251,12 @@ class TestParseRecipeEquipment:
         assert result.raw_text == "test recipe"
         assert result.workflow_step == "parsed"
 
+        # Verify basic actions were parsed
+        assert len(result.basic_actions) == 1
+        assert result.basic_actions[0].verb == "mix"
+        assert result.basic_actions[0].sentence == "Mix flour in large bowl."
+        assert result.basic_actions[0].sentence_index == 0
+
         # Verify ingredients and equipment are parsed
         assert len(result.ingredients) == 1
         assert result.ingredients[0].name == "flour"
@@ -260,7 +270,7 @@ class TestParseRecipeEquipment:
 
     def test_parse_recipe_clean_json(self, monkeypatch):
         """Test parsing when response is already clean JSON."""
-        mock_response = '{"equipment": [], "ingredients": []}'
+        mock_response = '{"equipment": [], "ingredients": [], "basic_actions": []}'
 
         def mock_text_generation(*args, **kwargs):
             return mock_response
@@ -276,6 +286,7 @@ class TestParseRecipeEquipment:
         assert isinstance(result, RecipeSessionState)
         assert len(result.ingredients) == 0
         assert len(result.equipment) == 0
+        assert len(result.basic_actions) == 0
         assert result.workflow_step == "parsed"
 
     def test_parse_recipe_invalid_json(self, monkeypatch):
@@ -331,3 +342,64 @@ class TestParseRecipeEquipment:
         assert isinstance(result, RecipeSessionState)
         assert len(result.ingredients) == 0
         assert len(result.equipment) == 0
+
+
+class TestBasicActionsAndDependencies:
+    """Test suite for basic actions parsing and dependency parsing."""
+
+    def test_basic_actions_creation(self):
+        """Test that BasicAction objects are created correctly."""
+        basic_action = BasicAction(
+            verb="mix",
+            sentence="Mix flour and salt in bowl.",
+            sentence_index=1
+        )
+
+        assert basic_action.verb == "mix"
+        assert basic_action.sentence == "Mix flour and salt in bowl."
+        assert basic_action.sentence_index == 1
+
+    def test_parse_dependencies_requires_basic_actions(self):
+        """Test that parse_dependencies requires basic actions to be present."""
+        state = RecipeSessionState()
+
+        # Add ingredients and equipment but no basic actions
+        state.ingredients = [Ingredient(name="flour", amount=2.0, unit="cups", modifiers=[], raw_text="2 cups flour")]
+        state.equipment = [Equipment(name="bowl", required=True, modifiers=None)]
+        # No basic_actions
+
+        result = parse_dependencies(state)
+
+        # Should return same state unchanged
+        assert result == state
+        assert len(result.actions) == 0
+
+    def test_parse_dependencies_requires_ingredients_and_equipment(self):
+        """Test that parse_dependencies requires ingredients and equipment."""
+        state = RecipeSessionState()
+
+        # Add basic actions but no ingredients/equipment
+        state.basic_actions = [BasicAction(verb="mix", sentence="Mix ingredients.", sentence_index=0)]
+
+        result = parse_dependencies(state)
+
+        # Should return same state unchanged
+        assert result == state
+        assert len(result.actions) == 0
+
+    def test_state_formatting_basic_actions(self):
+        """Test the format_basic_actions_for_display method."""
+        state = RecipeSessionState()
+
+        # Test empty basic actions
+        assert "No basic actions parsed yet." in state.format_basic_actions_for_display()
+
+        # Test with basic actions
+        state.basic_actions = [
+            BasicAction(verb="mix", sentence="Mix flour and salt in large bowl with spoon.", sentence_index=0),
+            BasicAction(verb="bake", sentence="Bake in preheated oven for 30 minutes.", sentence_index=1)
+        ]
+
+        display = state.format_basic_actions_for_display()
+        assert "'mix' in: Mix flour and salt in large bowl with spoon..." in display
+        assert "'bake' in: Bake in preheated oven for 30 minutes..." in display

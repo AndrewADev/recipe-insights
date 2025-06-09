@@ -60,7 +60,7 @@ equipment=[
 parse_equipment_prompt = f"""
 {briefing}
 
-Now, you will assist one such chef by parsing the equipment and ingredients from the recipe.
+Now, you will assist one such chef by parsing the equipment, ingredients, and cooking actions from the recipe.
 
 Return ONLY valid JSON with this exact structure. Do not include any other text, explanations, or markdown:
 
@@ -71,8 +71,13 @@ Return ONLY valid JSON with this exact structure. Do not include any other text,
   ],
   "ingredients": [
     {{"name": "flour", "amount": 3, "unit": "cup", "modifiers": "all-purpose"}},
-    {{"name": "salt", "amount": 1, "unit": "tsp", "modifiers": null}}
+    {{"name": "salt", "amount": 1, "unit": "tsp", "modifiers": null}},
+    {{"name": "olive oil", "amount": 0.5, "unit": "cup", "modifiers": null}}
   ],
+  "basic_actions": [
+    {{"verb": "mix", "sentence": "In large mixing bowl, combine 3 cups flour, 1 tsp salt, 1 packet yeast, and 1 cup warm water.", "sentence_index": 0}},
+    {{"verb": "combine", "sentence": "In large mixing bowl, combine 3 cups flour, 1 tsp salt, 1 packet yeast, and 1 cup warm water.", "sentence_index": 0}}
+  ]
 }}
 
 IMPORTANT:
@@ -80,6 +85,9 @@ IMPORTANT:
 * Do not include markdown code blocks, explanations, or any other text
 * All string values must be properly quoted
 * Use null for empty modifiers, not empty strings
+* For amounts, use decimal numbers (e.g., 0.5, 0.25, 0.33) NOT fractions (e.g., 1/2, 1/4, 1/3)
+* For basic_actions, extract cooking verbs (mix, combine, bake, etc.) with their full sentence context
+* sentence_index starts at 0 for the first sentence
 
 Recipe to parse:
 """
