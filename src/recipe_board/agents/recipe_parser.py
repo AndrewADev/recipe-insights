@@ -5,6 +5,7 @@ import pandas as pd
 
 from recipe_board.agents.recipe_analyzer import parse_ingredients_from_section
 from recipe_board.core.recipe import Ingredient
+from recipe_board.core.logging_utils import should_log_user_data
 
 
 @tool
@@ -84,11 +85,14 @@ def parse_recipe_ingredients(recipe_text: str) -> pd.DataFrame:
 
     except Exception as e:
         # Return error message in DataFrame format
+        error_message = (
+            f"Parsing failed: {str(e)}" if should_log_user_data() else "Parsing failed"
+        )
         error_df = pd.DataFrame(
             {
                 "Amount": ["Error"],
                 "Unit": [""],
-                "Name": [f"Parsing failed: {str(e)}"],
+                "Name": [error_message],
                 "Modifiers": [""],
                 "Raw Text": [""],
             }

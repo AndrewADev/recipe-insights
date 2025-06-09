@@ -13,6 +13,7 @@ from .tools import (
 from wasabi import msg
 from ..core.recipe import Ingredient, Equipment, Action, BasicAction
 from ..core.state import RecipeSessionState, ParsingState
+from ..core.logging_utils import safe_log_user_data
 
 model = os.environ["HF_MODEL"]
 
@@ -49,7 +50,7 @@ def parse_recipe(recipe: str) -> RecipeSessionState:
 
     # Log the raw response for debugging (truncated if very long)
     result_preview = result[:500] + "..." if len(result) > 500 else result
-    msg.info(f"LLM raw response: {result_preview}")
+    safe_log_user_data(msg.info, f"LLM raw response: {result_preview}")
 
     # Try to parse as JSON and convert to Pydantic objects
     try:
@@ -62,7 +63,9 @@ def parse_recipe(recipe: str) -> RecipeSessionState:
         clean_preview = (
             clean_result[:300] + "..." if len(clean_result) > 300 else clean_result
         )
-        msg.info(f"Cleaned response for JSON parsing: {clean_preview}")
+        safe_log_user_data(
+            msg.info, f"Cleaned response for JSON parsing: {clean_preview}"
+        )
 
         parsed = json.loads(clean_result)
 
@@ -91,11 +94,13 @@ def parse_recipe(recipe: str) -> RecipeSessionState:
             end = min(len(clean_result), e.pos + 50)
             context = clean_result[start:end]
             error_marker = " " * (e.pos - start) + "^"
-            msg.fail(f"Error context: ...{context}...")
+            safe_log_user_data(msg.fail, f"Error context: ...{context}...")
             msg.fail(f"Error position: ...{error_marker}")
 
         # Also log the full cleaned response for manual inspection
-        msg.fail(f"Full cleaned response that failed to parse: {clean_result}")
+        safe_log_user_data(
+            msg.fail, f"Full cleaned response that failed to parse: {clean_result}"
+        )
 
         # Fallback - return state with empty data but preserve raw text
         msg.warn("Returning empty state due to JSON parsing failure")
@@ -108,7 +113,7 @@ def parse_recipe(recipe: str) -> RecipeSessionState:
 
         # Log the response that caused the issue
         result_preview = result[:300] + "..." if len(result) > 300 else result
-        msg.fail(f"Response that caused error: {result_preview}")
+        safe_log_user_data(msg.fail, f"Response that caused error: {result_preview}")
 
         # Return empty state but preserve raw text
         msg.warn("Returning empty state due to unexpected parsing error")
@@ -162,7 +167,9 @@ def _convert_json_to_objects(
         available_keys = list(parsed_json.keys())
         msg.info(f"Parsed JSON contains keys: {available_keys}")
     else:
-        msg.warn(f"Expected dict but got {type(parsed_json)}: {parsed_json}")
+        safe_log_user_data(
+            msg.warn, f"Expected dict but got {type(parsed_json)}: {parsed_json}"
+        )
 
     ingredients_data = parsed_json.get("ingredients", [])
     equipment_data = parsed_json.get("equipment", [])
@@ -187,7 +194,7 @@ def _convert_json_to_objects(
     ingredients = []
     for item in ingredients_data:
         if not isinstance(item, dict):
-            msg.warn(f"Skipping invalid ingredient item: {item}")
+            safe_log_user_data(msg.warn, f"Skipping invalid ingredient item: {item}")
             continue
 
         # Handle modifiers - convert string to list or ensure it's a list
@@ -223,14 +230,16 @@ def _convert_json_to_objects(
             )
             ingredients.append(ingredient)
         except Exception as e:
-            msg.warn(f"Failed to create ingredient from {item}: {e}")
+            safe_log_user_data(
+                msg.warn, f"Failed to create ingredient from {item}: {e}"
+            )
             continue
 
     # Convert equipment
     equipment_list = []
     for item in equipment_data:
         if not isinstance(item, dict):
-            msg.warn(f"Skipping invalid equipment item: {item}")
+            safe_log_user_data(msg.warn, f"Skipping invalid equipment item: {item}")
             continue
 
         try:
@@ -241,14 +250,14 @@ def _convert_json_to_objects(
             )
             equipment_list.append(equipment)
         except Exception as e:
-            msg.warn(f"Failed to create equipment from {item}: {e}")
+            safe_log_user_data(msg.warn, f"Failed to create equipment from {item}: {e}")
             continue
 
     # Convert basic actions
     basic_actions_list = []
     for item in basic_actions_data:
         if not isinstance(item, dict):
-            msg.warn(f"Skipping invalid basic action item: {item}")
+            safe_log_user_data(msg.warn, f"Skipping invalid basic action item: {item}")
             continue
 
         try:
@@ -259,7 +268,9 @@ def _convert_json_to_objects(
             )
             basic_actions_list.append(basic_action)
         except Exception as e:
-            msg.warn(f"Failed to create basic action from {item}: {e}")
+            safe_log_user_data(
+                msg.warn, f"Failed to create basic action from {item}: {e}"
+            )
             continue
 
     return ingredients, equipment_list, basic_actions_list
@@ -474,7 +485,7 @@ Use the filtering tools at the end instead of writing your own filtering code.
             msg.info("We received the response in the expected format - a `dict` !")
             actions_data = result.get("actions", [])
         elif isinstance(result, RunResult):
-            msg.info(f"Agent result: {result.output[0:25]}...")
+            safe_log_user_data(msg.info, f"Agent result: {result.output[0:25]}...")
             raw = result.output
             # Look for JSON in the response
             import re
@@ -490,7 +501,9 @@ Use the filtering tools at the end instead of writing your own filtering code.
                 msg.warn("No JSON found in agent response")
                 actions_data = []
         elif isinstance(result, AgentText):
-            msg.info(f"Agent returned AgentText: {str(result)[:50]}...")
+            safe_log_user_data(
+                msg.info, f"Agent returned AgentText: {str(result)[:50]}..."
+            )
             raw = str(result)
             # Look for JSON in the response
             import re
