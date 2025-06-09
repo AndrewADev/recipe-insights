@@ -59,3 +59,9 @@ Thumbs.db
 
 # Test-related
 .coverage
+
+# Selective Claude Code file exclusion
+.claude/settings.local.json
+.claude/cache/
+.claude/logs/
+.claude/sessions/
