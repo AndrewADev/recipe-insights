@@ -1,6 +1,7 @@
 import os
 from huggingface_hub import InferenceClient
 from smolagents import InferenceClientModel, CodeAgent, RunResult
+from smolagents.agent_types import AgentText
 from .prompts import parse_equipment_prompt
 from .tools import (
     extract_verbs,
@@ -487,6 +488,29 @@ Use the filtering tools at the end instead of writing your own filtering code.
             else:
                 # No JSON found
                 msg.warn("No JSON found in agent response")
+                actions_data = []
+        elif isinstance(result, AgentText):
+            msg.info(f"Agent returned AgentText: {str(result)[:50]}...")
+            raw = str(result)
+            # Look for JSON in the response
+            import re
+
+            json_match = re.search(r"\{.*\}", raw, re.DOTALL)
+            if json_match:
+                json_str = json_match.group()
+                try:
+                    # Validate JSON
+                    parsed = json.loads(json_str)
+                    actions_data = parsed.get("actions", [])
+                    msg.info(
+                        f"Successfully extracted {len(actions_data)} actions from AgentText"
+                    )
+                except json.JSONDecodeError as e:
+                    msg.warn(f"Invalid JSON in AgentText response: {e}")
+                    actions_data = []
+            else:
+                # No JSON found
+                msg.warn("No JSON found in AgentText response")
                 actions_data = []
         else:
             # Unexpected result type
