@@ -2,7 +2,7 @@
 """Debug test for parse_dependencies function using monkeypatch approach."""
 
 from recipe_board.agents.models import parse_dependencies
-from recipe_board.core.state import RecipeSessionState
+from recipe_board.core.state import ParsingState, RecipeSessionState
 from recipe_board.core.recipe import Ingredient, Equipment, BasicAction
 
 def test_parse_dependencies_success(monkeypatch):
@@ -60,7 +60,7 @@ def test_parse_dependencies_success(monkeypatch):
     assert len(result.actions) == 2
     assert result.actions[0].name == "mix"
     assert result.actions[1].name == "whisk"
-    assert result.workflow_step == "dependencies_parsed"
+    assert result.parsing_state == ParsingState.COMPLETED
 
 def test_parse_dependencies_missing_env_vars(monkeypatch):
     """Test parse_dependencies when environment variables are missing."""
