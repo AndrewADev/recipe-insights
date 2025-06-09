@@ -404,6 +404,7 @@ def parse_dependencies(state: RecipeSessionState) -> RecipeSessionState:
                 validate_action_structure,
             ],
             model=hf_model,
+            additional_authorized_imports=["json"],
             max_steps=8,  # Reduced since we don't need extract_verbs
         )
     except Exception as e:
