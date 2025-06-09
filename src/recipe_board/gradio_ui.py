@@ -1,7 +1,7 @@
 import gradio as gr
 from wasabi import msg
 
-from recipe_board.agents.models import parse_recipe_equipment
+from recipe_board.agents.models import parse_recipe, parse_actions
 
 
 def create_parser_tab():
@@ -21,18 +21,84 @@ def create_parser_tab():
                 )
 
                 parse_button = gr.Button("Parse Recipe", variant="primary", size="lg")
+                parse_actions_button = gr.Button(
+                    "Parse Actions", variant="secondary", size="lg", interactive=False
+                )
 
             with gr.Column(scale=1):
                 parsed_output = gr.Textbox(
                     label="Parsed Results",
                     placeholder="Parsed ingredients and equipment will appear here...",
-                    lines=20,
-                    max_lines=30,
+                    lines=10,
+                    max_lines=15,
                 )
 
-        # Wire up the parsing function
+                actions_output = gr.Textbox(
+                    label="Parsed Actions",
+                    placeholder="Parsed actions will appear here after ingredients and equipment are processed...",
+                    lines=10,
+                    max_lines=15,
+                )
+
+        # Helper function to validate parsed JSON contains ingredients and equipment
+        def is_valid_parsed_output(parsed_text):
+            """Check if parsed output contains valid ingredients and equipment."""
+            if not parsed_text or parsed_text.strip() == "":
+                return False
+
+            try:
+                import json
+
+                data = json.loads(parsed_text)
+
+                # Check if it has the expected structure and non-empty arrays
+                has_ingredients = (
+                    "ingredients" in data
+                    and isinstance(data["ingredients"], list)
+                    and len(data["ingredients"]) > 0
+                )
+                has_equipment = (
+                    "equipment" in data
+                    and isinstance(data["equipment"], list)
+                    and len(data["equipment"]) > 0
+                )
+
+                return has_ingredients and has_equipment
+            except (json.JSONDecodeError, KeyError, TypeError):
+                return False
+
+        def parse_recipe_and_enable_actions(recipe_text):
+            """Parse recipe and return both the result and button state."""
+            parsed_result = parse_recipe(recipe_text)
+            is_valid = is_valid_parsed_output(parsed_result)
+
+            return parsed_result, gr.update(interactive=is_valid)
+
+        def parse_actions_from_parsed_data(recipe_text, parsed_data):
+            """Parse actions from already parsed ingredients and equipment."""
+            if not is_valid_parsed_output(parsed_data):
+                return "Error: Invalid or missing ingredient/equipment data. Please parse recipe first."
+
+            try:
+                # Call the actual parse_actions function
+                actions_result = parse_actions(recipe_text, parsed_data)
+                return actions_result
+            except ValueError as e:
+                return f"Error parsing actions: {str(e)}"
+            except Exception as e:
+                msg.fail(f"Unexpected error in actions parsing: {e}")
+                return f"Unexpected error occurred while parsing actions: {str(e)}"
+
         parse_button.click(
-            fn=parse_recipe_equipment, inputs=[recipe_input], outputs=[parsed_output]
+            fn=parse_recipe_and_enable_actions,
+            inputs=[recipe_input],
+            outputs=[parsed_output, parse_actions_button],
+        )
+
+        parse_actions_button.click(
+            fn=parse_actions_from_parsed_data,
+            inputs=[recipe_input, parsed_output],
+            outputs=[actions_output],
         )
 
         # Feedback components
@@ -48,7 +114,7 @@ def create_parser_tab():
 
         feedback_status = gr.Textbox(label="", visible=False)
 
-        def handle_feedback(feedback_type, recipe_input, parsed_output):
+        def handle_feedback(feedback_type, recipe_input, parsed_output, actions_output):
             import json
             import datetime
             import os
@@ -61,6 +127,7 @@ def create_parser_tab():
                 "feedback": feedback_type,
                 "input": recipe_input,
                 "output": parsed_output,
+                "actions": actions_output,
             }
 
             # Save to flagged directory with timestamp
@@ -74,17 +141,17 @@ def create_parser_tab():
             )
 
         helpful_btn.click(
-            fn=lambda recipe_input, parsed_output: handle_feedback(
-                "helpful", recipe_input, parsed_output
+            fn=lambda recipe_input, parsed_output, actions_output: handle_feedback(
+                "helpful", recipe_input, parsed_output, actions_output
             ),
-            inputs=[recipe_input, parsed_output],
+            inputs=[recipe_input, parsed_output, actions_output],
             outputs=[feedback_status],
         )
         not_helpful_btn.click(
-            fn=lambda recipe_input, parsed_output: handle_feedback(
-                "not_helpful", recipe_input, parsed_output
+            fn=lambda recipe_input, parsed_output, actions_output: handle_feedback(
+                "not_helpful", recipe_input, parsed_output, actions_output
             ),
-            inputs=[recipe_input, parsed_output],
+            inputs=[recipe_input, parsed_output, actions_output],
             outputs=[feedback_status],
         )
 

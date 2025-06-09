@@ -1,3 +1,6 @@
+from recipe_board.core.recipe import Equipment, Ingredient
+
+
 briefing = """
 You are a kitchen operations GURU, who excels at planning any and all things kitchen logistics.
 
@@ -27,7 +30,7 @@ dinner_rolls_single_step = """
 """
 
 examples = """
-Here are some examples:
+=== Examples ===:
 
 Sample recipe step:
 ```
@@ -50,21 +53,14 @@ equipment=[
   Equipment(name="Large mixing bowl"),
 ]
 ```
-
-Actions from recipes step:
-```
-actions=[
-  Action(name="combine")
-]
-```
-
+=== End examples ===
 """
 
 
 parse_equipment_prompt = f"""
 {briefing}
 
-Now, you will assist one such chef by parsing the equipment, ingredients, and actions from the recipe.
+Now, you will assist one such chef by parsing the equipment and ingredients from the recipe.
 
 Return ONLY valid JSON with this exact structure. Do not include any other text, explanations, or markdown:
 
@@ -77,10 +73,6 @@ Return ONLY valid JSON with this exact structure. Do not include any other text,
     {{"name": "flour", "amount": 3, "unit": "cup", "modifiers": "all-purpose"}},
     {{"name": "salt", "amount": 1, "unit": "tsp", "modifiers": null}}
   ],
-  "actions": [
-    {{"name": "combine", "description": "mix ingredients together"}},
-    {{"name": "knead", "description": "work dough by hand"}}
-  ]
 }}
 
 IMPORTANT:
@@ -91,3 +83,69 @@ IMPORTANT:
 
 Recipe to parse:
 """
+
+# Only first part, since IDs must be passed-in at call time
+parse_actions_prompt_pre = f"""
+{briefing}
+
+Now, you will assist one such chef by parsing the equipment and ingredients from the recipe.
+
+Actions:
+* Are things like combining ingredients, seasoning them, folding them in, etc.
+* Actions relate ingredients and equipment (they capture a M:1 relationship between ingredient and equipment)
+
+=== Example ===
+
+Sample recipe step:
+```
+{dinner_rolls_single_step}
+```
+
+Actions from recipes step:
+```
+actions=[
+  Action(name="combine",ingredient_ids=[UUID('12345678123456781234567812345678'), UUID('12345678123456781234567812345778')],equipment_id=UUID('12345678123456781234529812345678'))
+]
+```
+=== End Example ===
+
+
+Return ONLY valid JSON with this exact structure. Do not include any other text, explanations, or markdown:
+
+{{
+  "actions": [
+    {{"name": "combine", "description": "mix ingredients together", ingredient_id=["12345678123456781234567812345678", "12345678123456781234567812345778"], equipment_id="12345678123456781234529812345678"}},
+    {{"name": "knead", "description": "work dough by hand", ingredient_ids=["12345678123456781234567812345679"], equipment_id="12345678123456781234529812345609"}}
+  ]
+}}
+
+IMPORTANT:
+* Return ONLY the JSON object above
+* Do not include markdown code blocks, explanations, or any other text
+* All string values must be properly quoted
+* Use null for empty modifiers, not empty strings
+* Use the Ingredient and Equipment IDs provided to you. DO NOT generate your own.
+
+"""
+
+
+parse_actions_prompt_post = """
+Recipe to parse:
+"""
+
+
+def build_parse_actions_prompt(
+    ingredients: list[Ingredient], equipment: list[Equipment]
+):
+    instances = f"""
+The parsed Ingredients with their IDs:
+```
+{ingredients}
+```
+
+The parsed Equipment with their IDs:
+```
+{equipment}
+```
+"""
+    return f"{parse_actions_prompt_pre}\n{instances}\n{parse_actions_prompt_post}"
