@@ -92,10 +92,11 @@ class RecipeSessionState:
                 ]
                 parts.append(f"Ingredients: {', '.join(ing_names)}")
             if action.equipment_ids:
-                eq_names = [
-                    eq.name for eq in self.equipment if eq.id == action.equipment_ids
-                ]
-                parts.append(f"Equipment: {', '.join(eq_names)}")
+                eq_name = next(
+                    (eq.name for eq in self.equipment if eq.id == action.equipment_ids),
+                    "Unknown",
+                )
+                parts.append(f"Equipment: {eq_name}")
             formatted.append(" | ".join(parts))
 
         return "\n".join(f"- {item}" for item in formatted)
