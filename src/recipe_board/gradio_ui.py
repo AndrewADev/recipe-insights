@@ -38,43 +38,26 @@ def create_parser_tab(session_state):
                 )
 
             with gr.Column(scale=1):
-                with gr.Tabs() as results_tabs:
-                    with gr.Tab(label="Parsing", id="parsing_tab") as parsing_tab:
-                        parsed_output = gr.Textbox(
-                            label="Parsed Results",
-                            placeholder="Parsed ingredients and equipment will appear here...",
-                            lines=8,
-                            max_lines=12,
-                        )
+                parsed_output = gr.Textbox(
+                    label="Parsed Results",
+                    placeholder="Parsed ingredients and equipment will appear here...",
+                    lines=8,
+                    max_lines=12,
+                )
 
-                        basic_actions_output = gr.Textbox(
-                            label="Basic Actions",
-                            placeholder="Basic cooking actions (verbs) will appear here after recipe parsing...",
-                            lines=6,
-                            max_lines=10,
-                        )
+                basic_actions_output = gr.Textbox(
+                    label="Basic Actions",
+                    placeholder="Basic cooking actions (verbs) will appear here after recipe parsing...",
+                    lines=6,
+                    max_lines=10,
+                )
 
-                        actions_output = gr.Textbox(
-                            label="Action Dependencies",
-                            placeholder="Action dependencies will appear here after dependency parsing...",
-                            lines=8,
-                            max_lines=12,
-                        )
-
-                    with gr.Tab(
-                        label="Visualization", id="visualization_tab"
-                    ) as visualization_tab:
-                        graph_plot = gr.Plot(
-                            label="Recipe Dependency Graph", value=None
-                        )
-
-                        with gr.Row():
-                            download_html_btn = gr.DownloadButton(
-                                "Download as HTML", visible=False, size="sm"
-                            )
-                            download_json_btn = gr.DownloadButton(
-                                "Download as JSON", visible=False, size="sm"
-                            )
+                actions_output = gr.Textbox(
+                    label="Action Dependencies",
+                    placeholder="Action dependencies will appear here after dependency parsing...",
+                    lines=8,
+                    max_lines=12,
+                )
 
         def get_button_text(parsing_state):
             """Get button text based on current parsing state."""
@@ -256,7 +239,6 @@ def create_parser_tab(session_state):
                     None,
                     gr.update(visible=False),
                     gr.update(visible=False),
-                    gr.update(selected="parsing_tab"),  # Stay on parsing tab
                 )
 
             try:
@@ -274,9 +256,6 @@ def create_parser_tab(session_state):
                     fig,
                     gr.update(visible=html_visible),
                     gr.update(visible=json_visible),
-                    gr.update(
-                        selected="visualization_tab"
-                    ),  # Switch to visualization tab
                 )
 
             except Exception as e:
@@ -285,7 +264,6 @@ def create_parser_tab(session_state):
                     None,
                     gr.update(visible=False),
                     gr.update(visible=False),
-                    gr.update(selected="parsing_tab"),
                 )
 
         def download_graph_html(state):
@@ -326,10 +304,21 @@ def create_parser_tab(session_state):
                 msg.warn(f"Error generating JSON download: {e}")
                 return None
 
+    with gr.Tab(label="Visualization", id="visualization_tab") as visualization_tab:
+        graph_plot = gr.Plot(label="Recipe Dependency Graph", value=None)
+
+        with gr.Row():
+            download_html_btn = gr.DownloadButton(
+                "Download as HTML", visible=False, size="sm"
+            )
+            download_json_btn = gr.DownloadButton(
+                "Download as JSON", visible=False, size="sm"
+            )
+
         visualize_button.click(
             fn=create_dependency_visualization,
             inputs=[session_state],
-            outputs=[graph_plot, download_html_btn, download_json_btn, results_tabs],
+            outputs=[graph_plot, download_html_btn, download_json_btn],
         )
 
         download_html_btn.click(
@@ -346,65 +335,67 @@ def create_parser_tab(session_state):
 
         # Feedback components
 
-        with gr.Group():
-            gr.Markdown("### Feedback")
-            gr.Markdown(
-                "_By submitting feedback, you agree to your prompt and parsed data will be stored for analysis._"
-            )
-            with gr.Row():
-                helpful_btn = gr.Button("👍 Helpful", size="sm")
-                not_helpful_btn = gr.Button("👎 Not Helpful", size="sm")
-
-        feedback_status = gr.Textbox(label="", visible=False)
-
-        def handle_feedback(
-            feedback_type, state, parsed_output, basic_actions_output, actions_output
-        ):
-            import json
-            import datetime
-            import os
-
-            # Ensure flagged directory exists
-            os.makedirs("flagged", exist_ok=True)
-
-            feedback_data = {
-                "timestamp": datetime.datetime.now().isoformat(),
-                "feedback": feedback_type,
-                "input": state.raw_text,
-                "state": state.to_dict(),
-                "output_display": parsed_output,
-                "basic_actions_display": basic_actions_output,
-                "actions_display": actions_output,
-            }
-
-            # Save to flagged directory with timestamp
-            filename = f"flagged/feedback_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-            with open(filename, "w") as f:
-                json.dump(feedback_data, f, indent=2)
-
-            msg.info(f"User feedback saved to {filename}: {feedback_type}")
-            return gr.update(
-                value=f"Thanks! Feedback recorded: {feedback_type}", visible=True
-            )
-
-        helpful_btn.click(
-            fn=lambda state, parsed_output, basic_actions_output, actions_output: handle_feedback(
-                "helpful", state, parsed_output, basic_actions_output, actions_output
-            ),
-            inputs=[session_state, parsed_output, basic_actions_output, actions_output],
-            outputs=[feedback_status],
+    with gr.Group():
+        gr.Markdown("### Feedback")
+        gr.Markdown(
+            "_By submitting feedback, you agree to your prompt and parsed data will be stored for analysis._"
         )
-        not_helpful_btn.click(
-            fn=lambda state, parsed_output, basic_actions_output, actions_output: handle_feedback(
-                "not_helpful",
-                state,
-                parsed_output,
-                basic_actions_output,
-                actions_output,
-            ),
-            inputs=[session_state, parsed_output, basic_actions_output, actions_output],
-            outputs=[feedback_status],
+        with gr.Row():
+            helpful_btn = gr.Button("👍 Helpful", size="sm")
+            not_helpful_btn = gr.Button("👎 Not Helpful", size="sm")
+
+    feedback_status = gr.Textbox(label="", visible=False)
+
+    def handle_feedback(
+        feedback_type, state, parsed_output, basic_actions_output, actions_output
+    ):
+        import json
+        import datetime
+        import os
+
+        # Ensure flagged directory exists
+        os.makedirs("flagged", exist_ok=True)
+
+        feedback_data = {
+            "timestamp": datetime.datetime.now().isoformat(),
+            "feedback": feedback_type,
+            "input": state.raw_text,
+            "state": state.to_dict(),
+            "output_display": parsed_output,
+            "basic_actions_display": basic_actions_output,
+            "actions_display": actions_output,
+        }
+
+        # Save to flagged directory with timestamp
+        filename = (
+            f"flagged/feedback_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
         )
+        with open(filename, "w") as f:
+            json.dump(feedback_data, f, indent=2)
+
+        msg.info(f"User feedback saved to {filename}: {feedback_type}")
+        return gr.update(
+            value=f"Thanks! Feedback recorded: {feedback_type}", visible=True
+        )
+
+    helpful_btn.click(
+        fn=lambda state, parsed_output, basic_actions_output, actions_output: handle_feedback(
+            "helpful", state, parsed_output, basic_actions_output, actions_output
+        ),
+        inputs=[session_state, parsed_output, basic_actions_output, actions_output],
+        outputs=[feedback_status],
+    )
+    not_helpful_btn.click(
+        fn=lambda state, parsed_output, basic_actions_output, actions_output: handle_feedback(
+            "not_helpful",
+            state,
+            parsed_output,
+            basic_actions_output,
+            actions_output,
+        ),
+        inputs=[session_state, parsed_output, basic_actions_output, actions_output],
+        outputs=[feedback_status],
+    )
 
 
 def create_ui():
