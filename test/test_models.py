@@ -1,7 +1,7 @@
 import json
 import pytest
 from recipe_board.agents.models import parse_recipe, ingredients_and_equipment_from_parsed_recipe
-from recipe_board.core.recipe import Ingredient, Equipment
+from recipe_board.core.state import RecipeSessionState
 
 
 class TestIngredientsAndEquipmentFromParsedRecipe:
@@ -216,7 +216,7 @@ class TestIngredientsAndEquipmentFromParsedRecipe:
 
 
 class TestParseRecipeEquipment:
-    """Test suite for parse_recipe function."""
+    """Test suite for parse_recipe function (new state-based API)."""
 
     def test_parse_recipe_with_markdown_code_blocks(self, monkeypatch):
         """Test that markdown code blocks are properly stripped from response."""
@@ -228,9 +228,6 @@ class TestParseRecipeEquipment:
   ],
   "ingredients": [
     {"name": "flour", "amount": 2, "unit": "cups", "modifiers": null}
-  ],
-  "actions": [
-    {"name": "mix"}
   ]
 }
 ```"""
@@ -245,21 +242,25 @@ class TestParseRecipeEquipment:
 
         result = parse_recipe("test recipe")
 
-        # Verify markdown is stripped and JSON is properly formatted
-        assert result.startswith('{\n')
-        assert '```' not in result
-        assert '"equipment"' in result
-        assert '"ingredients"' in result
-        assert '"actions"' in result
+        # Verify result is RecipeSessionState
+        assert isinstance(result, RecipeSessionState)
+        assert result.raw_text == "test recipe"
+        assert result.workflow_step == "parsed"
 
-        # Verify it's valid JSON
-        parsed = json.loads(result)
-        assert len(parsed["equipment"]) == 2
-        assert parsed["equipment"][0]["name"] == "oven"
+        # Verify ingredients and equipment are parsed
+        assert len(result.ingredients) == 1
+        assert result.ingredients[0].name == "flour"
+        assert result.ingredients[0].amount == 2
+        assert result.ingredients[0].unit == "cups"
+
+        assert len(result.equipment) == 2
+        assert result.equipment[0].name == "oven"
+        assert result.equipment[0].required == True
+        assert result.equipment[1].name == "mixing bowl"
 
     def test_parse_recipe_clean_json(self, monkeypatch):
         """Test parsing when response is already clean JSON."""
-        mock_response = '{"equipment": [], "ingredients": [], "actions": []}'
+        mock_response = '{"equipment": [], "ingredients": []}'
 
         def mock_text_generation(*args, **kwargs):
             return mock_response
@@ -271,9 +272,11 @@ class TestParseRecipeEquipment:
 
         result = parse_recipe("test recipe")
 
-        # Should be properly formatted JSON
-        expected = '{\n  "equipment": [],\n  "ingredients": [],\n  "actions": []\n}'
-        assert result == expected
+        # Verify empty state
+        assert isinstance(result, RecipeSessionState)
+        assert len(result.ingredients) == 0
+        assert len(result.equipment) == 0
+        assert result.workflow_step == "parsed"
 
     def test_parse_recipe_invalid_json(self, monkeypatch):
         """Test handling of invalid JSON response."""
@@ -289,8 +292,11 @@ class TestParseRecipeEquipment:
 
         result = parse_recipe("test recipe")
 
-        # Should return the raw response when JSON parsing fails
-        assert result == mock_response
+        # Should return empty state when JSON parsing fails
+        assert isinstance(result, RecipeSessionState)
+        assert len(result.ingredients) == 0
+        assert len(result.equipment) == 0
+        assert result.raw_text == "test recipe"
 
     def test_parse_recipe_empty_response(self, monkeypatch):
         """Test handling of empty response."""
@@ -304,8 +310,10 @@ class TestParseRecipeEquipment:
 
         result = parse_recipe("test recipe")
 
-        # Should return empty JSON object
-        assert result == "{}"
+        # Should return empty state
+        assert isinstance(result, RecipeSessionState)
+        assert len(result.ingredients) == 0
+        assert len(result.equipment) == 0
 
     def test_parse_recipe_none_response(self, monkeypatch):
         """Test handling of None response."""
@@ -319,5 +327,7 @@ class TestParseRecipeEquipment:
 
         result = parse_recipe("test recipe")
 
-        # Should return empty JSON object
-        assert result == "{}"
+        # Should return empty state
+        assert isinstance(result, RecipeSessionState)
+        assert len(result.ingredients) == 0
+        assert len(result.equipment) == 0

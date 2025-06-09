@@ -1,11 +1,16 @@
 import gradio as gr
 from wasabi import msg
 
-from recipe_board.agents.models import parse_recipe, parse_actions
+from recipe_board.agents.models import (
+    parse_recipe,
+    parse_actions,
+)
+from recipe_board.core.state import RecipeSessionState
 
 
-def create_parser_tab():
+def create_parser_tab(session_state):
     with gr.Tab(label="Parser"):
+
         gr.Markdown("# Recipe Board")
         gr.Markdown(
             "Paste your recipe text on the left and click 'Parse Recipe' to analyze ingredients and equipment."
@@ -40,65 +45,67 @@ def create_parser_tab():
                     max_lines=15,
                 )
 
-        # Helper function to validate parsed JSON contains ingredients and equipment
-        def is_valid_parsed_output(parsed_text):
-            """Check if parsed output contains valid ingredients and equipment."""
-            if not parsed_text or parsed_text.strip() == "":
-                return False
+        def parse_recipe_and_enable_actions(recipe_text, state):
+            """Parse recipe and return formatted results, updated state, and button state."""
+            try:
+                # Update state with new recipe text and parse
+                state.clear()
+                state.raw_text = recipe_text
+
+                # Parse using new state-based function
+                updated_state = parse_recipe(recipe_text)
+
+                # Format output for display
+                ingredients_display = updated_state.format_ingredients_for_display()
+                equipment_display = updated_state.format_equipment_for_display()
+                combined_output = f"## Ingredients\n{ingredients_display}\n\n## Equipment\n{equipment_display}"
+
+                # Check if parsing was successful
+                is_valid = updated_state.has_parsed_data()
+
+                return combined_output, updated_state, gr.update(interactive=is_valid)
+
+            except Exception as e:
+                msg.fail(f"Error parsing recipe: {e}")
+                error_msg = f"Error parsing recipe: {str(e)}"
+                return error_msg, state, gr.update(interactive=False)
+
+        def parse_actions_from_state(state):
+            """Parse actions from recipe state."""
+            if not state.has_parsed_data():
+                return (
+                    "Error: No ingredients or equipment found. Please parse recipe first.",
+                    state,
+                )
 
             try:
-                import json
+                # Parse actions using state-based function
+                updated_state = parse_actions(state)
 
-                data = json.loads(parsed_text)
+                # Format actions for display
+                actions_display = updated_state.format_actions_for_display()
 
-                # Check if it has the expected structure and non-empty arrays
-                has_ingredients = (
-                    "ingredients" in data
-                    and isinstance(data["ingredients"], list)
-                    and len(data["ingredients"]) > 0
-                )
-                has_equipment = (
-                    "equipment" in data
-                    and isinstance(data["equipment"], list)
-                    and len(data["equipment"]) > 0
-                )
+                return actions_display, updated_state
 
-                return has_ingredients and has_equipment
-            except (json.JSONDecodeError, KeyError, TypeError):
-                return False
-
-        def parse_recipe_and_enable_actions(recipe_text):
-            """Parse recipe and return both the result and button state."""
-            parsed_result = parse_recipe(recipe_text)
-            is_valid = is_valid_parsed_output(parsed_result)
-
-            return parsed_result, gr.update(interactive=is_valid)
-
-        def parse_actions_from_parsed_data(recipe_text, parsed_data):
-            """Parse actions from already parsed ingredients and equipment."""
-            if not is_valid_parsed_output(parsed_data):
-                return "Error: Invalid or missing ingredient/equipment data. Please parse recipe first."
-
-            try:
-                # Call the actual parse_actions function
-                actions_result = parse_actions(recipe_text, parsed_data)
-                return actions_result
             except ValueError as e:
-                return f"Error parsing actions: {str(e)}"
+                return f"Error parsing actions: {str(e)}", state
             except Exception as e:
                 msg.fail(f"Unexpected error in actions parsing: {e}")
-                return f"Unexpected error occurred while parsing actions: {str(e)}"
+                return (
+                    f"Unexpected error occurred while parsing actions: {str(e)}",
+                    state,
+                )
 
         parse_button.click(
             fn=parse_recipe_and_enable_actions,
-            inputs=[recipe_input],
-            outputs=[parsed_output, parse_actions_button],
+            inputs=[recipe_input, session_state],
+            outputs=[parsed_output, session_state, parse_actions_button],
         )
 
         parse_actions_button.click(
-            fn=parse_actions_from_parsed_data,
-            inputs=[recipe_input, parsed_output],
-            outputs=[actions_output],
+            fn=parse_actions_from_state,
+            inputs=[session_state],
+            outputs=[actions_output, session_state],
         )
 
         # Feedback components
@@ -114,7 +121,7 @@ def create_parser_tab():
 
         feedback_status = gr.Textbox(label="", visible=False)
 
-        def handle_feedback(feedback_type, recipe_input, parsed_output, actions_output):
+        def handle_feedback(feedback_type, state, parsed_output, actions_output):
             import json
             import datetime
             import os
@@ -125,9 +132,10 @@ def create_parser_tab():
             feedback_data = {
                 "timestamp": datetime.datetime.now().isoformat(),
                 "feedback": feedback_type,
-                "input": recipe_input,
-                "output": parsed_output,
-                "actions": actions_output,
+                "input": state.raw_text,
+                "state": state.to_dict(),
+                "output_display": parsed_output,
+                "actions_display": actions_output,
             }
 
             # Save to flagged directory with timestamp
@@ -141,17 +149,17 @@ def create_parser_tab():
             )
 
         helpful_btn.click(
-            fn=lambda recipe_input, parsed_output, actions_output: handle_feedback(
-                "helpful", recipe_input, parsed_output, actions_output
+            fn=lambda state, parsed_output, actions_output: handle_feedback(
+                "helpful", state, parsed_output, actions_output
             ),
-            inputs=[recipe_input, parsed_output, actions_output],
+            inputs=[session_state, parsed_output, actions_output],
             outputs=[feedback_status],
         )
         not_helpful_btn.click(
-            fn=lambda recipe_input, parsed_output, actions_output: handle_feedback(
-                "not_helpful", recipe_input, parsed_output, actions_output
+            fn=lambda state, parsed_output, actions_output: handle_feedback(
+                "not_helpful", state, parsed_output, actions_output
             ),
-            inputs=[recipe_input, parsed_output, actions_output],
+            inputs=[session_state, parsed_output, actions_output],
             outputs=[feedback_status],
         )
 
@@ -159,7 +167,9 @@ def create_parser_tab():
 def create_ui():
     """Create and configure the Gradio interface."""
     with gr.Blocks(title="Recipe Board - AI Recipe Analyzer") as demo:
-        create_parser_tab()
+        # Create session state at the Blocks level
+        session_state = gr.State(RecipeSessionState())
+        create_parser_tab(session_state)
 
     return demo
 

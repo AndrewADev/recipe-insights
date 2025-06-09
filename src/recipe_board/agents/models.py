@@ -10,12 +10,26 @@ from .tools import (
     validate_action_structure,
 )
 from wasabi import msg
-from ..core.recipe import Ingredient, Equipment
+from ..core.recipe import Ingredient, Equipment, Action
+from ..core.state import RecipeSessionState
 
 model = os.environ["HF_MODEL"]
 
 
-def parse_recipe(recipe: str):
+def parse_recipe(recipe: str) -> RecipeSessionState:
+    """
+    Parse recipe text and return structured state with ingredients and equipment.
+
+    Args:
+        recipe: Raw recipe text
+
+    Returns:
+        RecipeSessionState with parsed ingredients and equipment
+    """
+    state = RecipeSessionState()
+    state.raw_text = recipe
+    state.workflow_step = "parsing"
+
     try:
         hf_client = InferenceClient(
             provider="hf-inference",
@@ -23,15 +37,16 @@ def parse_recipe(recipe: str):
         )
     except Exception as e:
         # TODO: retries?
-        msg.fail("error creating client:  {e}")
+        msg.fail(f"error creating client: {e}")
+        return state
 
     result = hf_client.text_generation(parse_equipment_prompt + recipe, model=model)
 
     if result is None or result == "":
         msg.warn("No result returned!")
-        return "{}"
+        return state
 
-    # Try to parse as JSON and format nicely
+    # Try to parse as JSON and convert to Pydantic objects
     try:
         import json
         import re
@@ -45,13 +60,98 @@ def parse_recipe(recipe: str):
         if clean_result.endswith("```"):
             clean_result = re.sub(r"\s*```$", "", clean_result)
 
-        # TODO: avoid back-and-forth
         parsed = json.loads(clean_result)
-        return json.dumps(parsed, indent=2)
+
+        # Convert to structured state
+        ingredients, equipment = _convert_json_to_objects(parsed)
+        state.ingredients = ingredients
+        state.equipment = equipment
+        state.workflow_step = "parsed"
+
+        return state
+
     except json.JSONDecodeError:
-        # Fallback to raw result if not valid JSON
-        msg.warn("Response is not valid JSON, returning raw result")
-        return result
+        # Fallback - return state with empty data but preserve raw text
+        msg.warn("Response is not valid JSON, returning empty state")
+        return state
+
+
+def _convert_json_to_objects(
+    parsed_json: dict,
+) -> tuple[list[Ingredient], list[Equipment]]:
+    """Convert parsed JSON to Ingredient and Equipment objects."""
+    ingredients_data = parsed_json.get("ingredients", [])
+    equipment_data = parsed_json.get("equipment", [])
+
+    if not isinstance(ingredients_data, list):
+        msg.warn("'ingredients' must be an array")
+        ingredients_data = []
+    if not isinstance(equipment_data, list):
+        msg.warn("'equipment' must be an array")
+        equipment_data = []
+
+    # Convert ingredients
+    ingredients = []
+    for item in ingredients_data:
+        if not isinstance(item, dict):
+            msg.warn(f"Skipping invalid ingredient item: {item}")
+            continue
+
+        # Handle modifiers - convert string to list or ensure it's a list
+        modifiers = item.get("modifiers", [])
+        if isinstance(modifiers, str):
+            modifiers = [modifiers] if modifiers else []
+        elif modifiers is None:
+            modifiers = []
+        elif not isinstance(modifiers, list):
+            modifiers = []
+
+        name = item.get("name", "")
+        amount = item.get("amount")
+        unit = item.get("unit")
+
+        raw_text_parts = []
+        if amount is not None:
+            raw_text_parts.append(str(amount))
+        if unit:
+            raw_text_parts.append(unit)
+        raw_text_parts.append(name)
+        if modifiers:
+            raw_text_parts.extend(modifiers)
+        raw_text = " ".join(raw_text_parts)
+
+        try:
+            ingredient = Ingredient(
+                name=name,
+                amount=amount,
+                unit=unit,
+                modifiers=modifiers,
+                raw_text=raw_text,
+            )
+            ingredients.append(ingredient)
+        except Exception as e:
+            msg.warn(f"Failed to create ingredient from {item}: {e}")
+            continue
+
+    # Convert equipment
+    equipment_list = []
+    for item in equipment_data:
+        if not isinstance(item, dict):
+            msg.warn(f"Skipping invalid equipment item: {item}")
+            continue
+
+        try:
+            equipment = Equipment(
+                name=item.get("name", ""),
+                required=item.get("required", True),
+                modifiers=item.get("modifiers"),
+            )
+            equipment_list.append(equipment)
+        except Exception as e:
+            msg.warn(f"Failed to create equipment from {item}: {e}")
+            continue
+
+    return ingredients, equipment_list
 
 
 def ingredients_and_equipment_from_parsed_recipe(
@@ -157,60 +257,51 @@ def ingredients_and_equipment_from_parsed_recipe(
         raise
 
 
-def parse_actions(recipe_text: str, parsed_recipe_json: str) -> str:
-    """Parse actions from recipe text using agent with spaCy tools.
+def parse_actions(state: RecipeSessionState) -> RecipeSessionState:
+    """Parse actions from recipe state using agent with spaCy tools.
 
     Args:
-        recipe_text: Original recipe text
-        parsed_recipe_json: JSON string from parse_recipe containing ingredients/equipment
+        state: RecipeSessionState with parsed ingredients and equipment
 
     Returns:
-        JSON string containing parsed actions
+        Updated RecipeSessionState with parsed actions
 
     Raises:
-        ValueError: If parsed_recipe_json is invalid or agent request fails
+        ValueError: If state is invalid or agent request fails
     """
+    import json
+
+    if not state.ingredients and not state.equipment:
+        msg.warn("No ingredients or equipment found, cannot parse actions")
+        return state
+
+    # Set up the agent with tools
     try:
-        import json
+        hf_model = InferenceClientModel(model_id=model, token=os.environ["HF_TOKEN"])
 
-        # Convert JSON to Pydantic objects
-        ingredients, equipment = ingredients_and_equipment_from_parsed_recipe(
-            parsed_recipe_json
+        agent = CodeAgent(
+            tools=[
+                extract_verbs,
+                find_ingredients_in_sentence,
+                find_equipment_in_sentence,
+                filter_valid_actions,
+                validate_action_structure,
+            ],
+            model=hf_model,
+            max_steps=10,
         )
+    except Exception as e:
+        msg.fail(f"Error creating agent: {e}")
+        raise ValueError(f"Failed to create agent: {e}")
 
-        if not ingredients and not equipment:
-            msg.warn("No ingredients or equipment found, cannot parse actions")
-            return json.dumps({"actions": []}, indent=2)
+    # Prepare ingredient and equipment names for the agent
+    ingredient_names = [ing.name for ing in state.ingredients]
+    equipment_names = [eq.name for eq in state.equipment]
 
-        # Set up the agent with tools
-        try:
-            hf_model = InferenceClientModel(
-                model_id=model, token=os.environ["HF_TOKEN"]
-            )
+    # Create the agent prompt with recipe text properly quoted
+    recipe_text_escaped = state.raw_text.replace('"', '\\"').replace("'", "\\'")
 
-            agent = CodeAgent(
-                tools=[
-                    extract_verbs,
-                    find_ingredients_in_sentence,
-                    find_equipment_in_sentence,
-                    filter_valid_actions,
-                    validate_action_structure,
-                ],
-                model=hf_model,
-                max_steps=10,
-            )
-        except Exception as e:
-            msg.fail(f"Error creating agent: {e}")
-            raise ValueError(f"Failed to create agent: {e}")
-
-        # Prepare ingredient and equipment names for the agent
-        ingredient_names = [ing.name for ing in ingredients]
-        equipment_names = [eq.name for eq in equipment]
-
-        # Create the agent prompt with recipe text properly quoted
-        recipe_text_escaped = recipe_text.replace('"', '\\"').replace("'", "\\'")
-
-        agent_prompt = f"""
+    agent_prompt = f"""
 You are a recipe analysis expert. Your task is to identify actions in a recipe and link them to specific ingredients and equipment.
 
 You have access to these tools:
@@ -221,10 +312,10 @@ You have access to these tools:
 - validate_action_structure: Ensure actions have proper structure and field types
 
 Available ingredients (with IDs):
-{[{"name": ing.name, "id": ing.id} for ing in ingredients]}
+{[{"name": ing.name, "id": ing.id} for ing in state.ingredients]}
 
 Available equipment (with IDs):
-{[{"name": eq.name, "id": eq.id} for eq in equipment]}
+{[{"name": eq.name, "id": eq.id} for eq in state.equipment]}
 
 Recipe text to analyze:
 "{recipe_text_escaped}"
@@ -235,7 +326,7 @@ Your goal: Return a JSON object with this structure:
     {{
       "name": "action_verb",
       "ingredient_ids": ["id1", "id2"],
-      "equipment_id": "equipment_id"
+      "equipment_ids": "equipment_id"
     }}
   ]
 }}
@@ -254,40 +345,59 @@ Then for each cooking verb, search only within its sentence context.
 Use the filtering tools at the end instead of writing your own filtering code.
 """
 
-        # Run the agent
-        try:
-            result = agent.run(agent_prompt)
+    # Run the agent
+    try:
+        result = agent.run(agent_prompt)
+        state.workflow_step = "actions_parsing"
 
-            # TODO: conver str case too
-            # Try to extract JSON from the result
-            if isinstance(result, dict):
-                msg.info("We received the response in the expected format - a `dict` !")
-                return json.dumps(result, indent=2)
-            elif isinstance(result, RunResult):
-                msg.info(f"Agent result: {result.output[0:25]}...")
-                raw = result.output
-                # Look for JSON in the response
-                import re
+        # Try to extract JSON from the result and convert to Action objects
+        actions_data = None
+        if isinstance(result, dict):
+            msg.info("We received the response in the expected format - a `dict` !")
+            actions_data = result.get("actions", [])
+        elif isinstance(result, RunResult):
+            msg.info(f"Agent result: {result.output[0:25]}...")
+            raw = result.output
+            # Look for JSON in the response
+            import re
 
-                json_match = re.search(r"\{.*\}", raw, re.DOTALL)
-                if json_match:
-                    json_str = json_match.group()
-                    # Validate JSON
-                    parsed = json.loads(json_str)
-                    return json.dumps(parsed, indent=2)
-                else:
-                    # No JSON found, return empty actions
-                    msg.warn("No JSON found in agent response")
-                    return json.dumps({"actions": []}, indent=2)
-
+            json_match = re.search(r"\{.*\}", raw, re.DOTALL)
+            if json_match:
+                json_str = json_match.group()
+                # Validate JSON
+                parsed = json.loads(json_str)
+                actions_data = parsed.get("actions", [])
             else:
-                # Unexpected result type
-                msg.warn(f"Unexpected agent result type: {type(result)}")
-                return json.dumps({"actions": []}, indent=2)
+                # No JSON found
+                msg.warn("No JSON found in agent response")
+                actions_data = []
+        else:
+            # Unexpected result type
+            msg.warn(f"Unexpected agent result type: {type(result)}")
+            actions_data = []
 
-        except Exception as e:
-            msg.warn(f"Agent execution failed: {e}")
-            return json.dumps({"actions": []}, indent=2)
+        # Convert actions to Pydantic objects
+        actions = []
+        for action_item in actions_data:
+            if not isinstance(action_item, dict):
+                msg.warn(f"Skipping invalid action item: {action_item}")
+                continue
+
+            try:
+                action = Action(
+                    name=action_item.get("name", ""),
+                    ingredient_ids=action_item.get("ingredient_ids", []),
+                    equipment_ids=action_item.get("equipment_ids", ""),
+                )
+                actions.append(action)
+            except Exception as e:
+                msg.warn(f"Failed to create action from {action_item}: {e}")
+                continue
+
+        state.actions = actions
+        state.workflow_step = "actions_parsed"
+        return state
+
     except Exception as e:
-        msg.fail(f"Error parsing actions: {e}")
-        raise ValueError(f"Failed to parse actions: {e}")
+        msg.warn(f"Agent execution failed: {e}")
+        return state
