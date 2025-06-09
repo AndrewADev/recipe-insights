@@ -7,6 +7,7 @@ sdk: gradio
 sdk_version: 5.0.0
 app_file: src/recipe_board/main.py
 pinned: false
+python_version: 3.13
 ---
 # RecipeBoard
 
