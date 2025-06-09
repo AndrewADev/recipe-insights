@@ -17,6 +17,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Run all tests: `uv run pytest`
 - Run specific test file: `uv run pytest test/test_recipe_analyzer.py`
 - Run with verbose output: `uv run pytest -v`
+- Test UI functionality: `uv run pytest -k ui_smoke`
 
 ## Architecture Overview
 
@@ -58,3 +59,4 @@ This is an AI-powered recipe analysis tool that helps hobbyist chefs understand 
 
 ## Development Workflow
 - **IMPORTANT**: Always run `uv run pre-commit run --all-files` before finishing any task to ensure code quality standards are met
+- **UI Changes**: When modifying the UI, verify functionality with `uv run pytest -k ui_smoke` to ensure the interface loads correctly

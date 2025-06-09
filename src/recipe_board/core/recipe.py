@@ -1,5 +1,6 @@
-from pydantic import BaseModel
-from typing import List, Optional
+import uuid
+from pydantic import BaseModel, Field
+from typing import Optional
 from enum import Enum
 
 
@@ -12,17 +13,18 @@ class IngredientState(Enum):
 
 
 class Ingredient(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     name: str
-    # TODO: fractions? Pretty common in recipes
     amount: Optional[float]
     unit: Optional[str]
     # TODO: later (where belong?)
     # state: IngredientState = IngredientState.RAW
-    modifiers: List[str]
+    modifiers: list[str]
     raw_text: str
 
 
 class Equipment(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     name: str
     required: bool = True
     modifiers: Optional[str]
@@ -30,12 +32,14 @@ class Equipment(BaseModel):
 
 class Action(BaseModel):
     name: str
+    ingredient_ids: list[str]
+    equipment_ids: str
 
 
 class RecipeStep(BaseModel):
     step_number: int
     instruction: str
-    ingredients_used: List[str]
-    equipment_needed: List[str]
+    ingredients_used: list[str]
+    equipment_needed: list[str]
     estimated_time_minutes: Optional[int]
-    dependencies: List[int] = []  # step numbers this depends on
+    dependencies: list[int] = []  # step numbers this depends on
