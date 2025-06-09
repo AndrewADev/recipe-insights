@@ -80,14 +80,25 @@ def create_parser_tab(session_state):
             # Handle different button states
             if state.parsing_state == ParsingState.DEPENDENCIES_ERROR:
                 # Retry dependency parsing only
-                return retry_dependency_parsing(state)
+                yield from retry_dependency_parsing(state)
+                return
 
             # Initial parsing or new recipe
             try:
-                # Step 1: Parse recipe
+                # Step 1: Show parsing state immediately
                 state.clear()
                 state.raw_text = recipe_text
                 state.parsing_state = ParsingState.PARSING_RECIPE
+
+                # Yield immediate button state update
+                yield (
+                    "Parsing recipe...",  # Show immediate feedback
+                    "Parsing recipe...",
+                    "",
+                    state,
+                    gr.update(value="Parsing...", interactive=False),
+                    gr.update(interactive=False),
+                )
 
                 # Parse using state-based function
                 updated_state = parse_recipe(recipe_text)
@@ -106,7 +117,7 @@ def create_parser_tab(session_state):
                 if not (has_basic_data and has_basic_actions):
                     # Recipe parsing failed
                     updated_state.parsing_state = ParsingState.INITIAL
-                    return (
+                    yield (
                         combined_output,
                         basic_actions_display,
                         "",  # Empty actions output
@@ -117,9 +128,18 @@ def create_parser_tab(session_state):
                         ),
                         gr.update(interactive=False),  # Keep visualize disabled
                     )
+                    return
 
-                # Step 2: Auto-trigger dependency parsing
+                # Step 2: Show dependency parsing state
                 updated_state.parsing_state = ParsingState.PARSING_DEPENDENCIES
+                yield (
+                    combined_output,
+                    basic_actions_display,
+                    "Parsing dependencies...",
+                    updated_state,
+                    gr.update(value="Parsing Dependencies...", interactive=False),
+                    gr.update(interactive=False),
+                )
 
                 try:
                     # Parse dependencies
@@ -130,7 +150,7 @@ def create_parser_tab(session_state):
                     actions_display = final_state.format_actions_for_display()
                     has_actions = len(final_state.actions) > 0
 
-                    return (
+                    yield (
                         combined_output,
                         basic_actions_display,
                         actions_display,
@@ -147,7 +167,7 @@ def create_parser_tab(session_state):
                     updated_state.parsing_state = ParsingState.DEPENDENCIES_ERROR
                     msg.fail(f"Error parsing dependencies: {dep_error}")
 
-                    return (
+                    yield (
                         combined_output,
                         basic_actions_display,
                         f"Error parsing dependencies: {str(dep_error)}",
@@ -164,7 +184,7 @@ def create_parser_tab(session_state):
                 msg.fail(f"Error parsing recipe: {e}")
                 state.parsing_state = ParsingState.INITIAL
                 error_msg = f"Error parsing recipe: {str(e)}"
-                return (
+                yield (
                     error_msg,
                     "Error: No basic actions found",
                     "",
@@ -180,11 +200,26 @@ def create_parser_tab(session_state):
             try:
                 state.parsing_state = ParsingState.PARSING_DEPENDENCIES
 
+                # Show immediate feedback
+                ingredients_display = state.format_ingredients_for_display()
+                equipment_display = state.format_equipment_for_display()
+                combined_output = f"## Ingredients\n{ingredients_display}\n\n## Equipment\n{equipment_display}"
+                basic_actions_display = state.format_basic_actions_for_display()
+
+                yield (
+                    combined_output,
+                    basic_actions_display,
+                    "Retrying dependency parsing...",
+                    state,
+                    gr.update(value="Parsing Dependencies...", interactive=False),
+                    gr.update(interactive=False),
+                )
+
                 # Parse dependencies
                 updated_state = parse_dependencies(state)
                 updated_state.parsing_state = ParsingState.COMPLETED
 
-                # Format existing displays
+                # Format updated displays
                 ingredients_display = updated_state.format_ingredients_for_display()
                 equipment_display = updated_state.format_equipment_for_display()
                 combined_output = f"## Ingredients\n{ingredients_display}\n\n## Equipment\n{equipment_display}"
@@ -193,7 +228,7 @@ def create_parser_tab(session_state):
 
                 has_actions = len(updated_state.actions) > 0
 
-                return (
+                yield (
                     combined_output,
                     basic_actions_display,
                     actions_display,
@@ -208,8 +243,12 @@ def create_parser_tab(session_state):
             except Exception as e:
                 # Still failing - keep retry state
                 msg.fail(f"Error retrying dependency parsing: {e}")
-                return (
-                    state.format_ingredients_for_display(),  # Keep existing displays
+                ingredients_display = state.format_ingredients_for_display()
+                equipment_display = state.format_equipment_for_display()
+                combined_output = f"## Ingredients\n{ingredients_display}\n\n## Equipment\n{equipment_display}"
+
+                yield (
+                    combined_output,
                     state.format_basic_actions_for_display(),
                     f"Error retrying dependency parsing: {str(e)}",
                     state,

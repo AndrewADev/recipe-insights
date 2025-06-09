@@ -465,7 +465,7 @@ Use the filtering tools at the end instead of writing your own filtering code.
     # Run the agent
     try:
         result = agent.run(agent_prompt)
-        state.workflow_step = "dependencies_parsing"
+        state.parsing_state = ParsingState.PARSING_DEPENDENCIES
 
         # Try to extract JSON from the result and convert to Action objects
         actions_data = None
@@ -512,7 +512,7 @@ Use the filtering tools at the end instead of writing your own filtering code.
                 continue
 
         state.actions = actions
-        state.workflow_step = "dependencies_parsed"
+        state.parsing_state = ParsingState.COMPLETED
         return state
 
     except Exception as e:
