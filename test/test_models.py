@@ -3,6 +3,7 @@ import pytest
 from recipe_board.agents.models import parse_recipe, parse_dependencies, ingredients_and_equipment_from_parsed_recipe
 from recipe_board.core.state import RecipeSessionState, ParsingState
 from recipe_board.core.recipe import Ingredient, Equipment, BasicAction
+from smolagents.agent_types import AgentText
 
 
 class TestIngredientsAndEquipmentFromParsedRecipe:
@@ -403,3 +404,52 @@ class TestBasicActionsAndDependencies:
         display = state.format_basic_actions_for_display()
         assert "'mix' in: Mix flour and salt in large bowl with spoon..." in display
         assert "'bake' in: Bake in preheated oven for 30 minutes..." in display
+
+    def test_parse_dependencies_with_agent_text_result(self, monkeypatch):
+        """Test parse_dependencies when agent returns AgentText instance."""
+        # Create state with valid ingredients, equipment and basic actions
+        state = RecipeSessionState()
+        state.ingredients = [
+            Ingredient(name="flour", amount=2.0, unit="cups", modifiers=[], raw_text="2 cups flour")
+        ]
+        state.equipment = [
+            Equipment(name="mixing bowl", required=True, modifiers=None)
+        ]
+        state.basic_actions = [
+            BasicAction(verb="mix", sentence="Mix flour in mixing bowl.", sentence_index=0)
+        ]
+
+        # Mock agent that returns AgentText with JSON content
+        agent_text_content = '''
+        Based on the ingredients and equipment, here are the actions:
+
+        {"actions": [{"name": "mix", "ingredient_ids": ["id1"], "equipment_ids": "eq1"}]}
+
+        This JSON represents the cooking actions.
+        '''
+
+        mock_agent_text = AgentText(agent_text_content)
+
+        # Mock the agent.run method to return AgentText
+        def mock_agent_run(prompt):
+            return mock_agent_text
+
+        # Mock the agent creation and run
+        from unittest.mock import MagicMock
+        mock_agent = MagicMock()
+        mock_agent.run.return_value = mock_agent_text
+
+        def mock_code_agent(*args, **kwargs):
+            return mock_agent
+
+        monkeypatch.setattr("recipe_board.agents.models.CodeAgent", mock_code_agent)
+        monkeypatch.setattr("recipe_board.agents.models.InferenceClientModel", lambda **kwargs: MagicMock())
+
+        # Test the function
+        result = parse_dependencies(state)
+
+        # Should successfully parse actions from AgentText content
+        assert len(result.actions) == 1
+        assert result.actions[0].name == "mix"
+        assert result.actions[0].ingredient_ids == ["id1"]
+        assert result.actions[0].equipment_ids == "eq1"
