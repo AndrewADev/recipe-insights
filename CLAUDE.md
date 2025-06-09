@@ -60,3 +60,28 @@ This is an AI-powered recipe analysis tool that helps hobbyist chefs understand 
 ## Development Workflow
 - **IMPORTANT**: Always run `uv run pre-commit run --all-files` before finishing any task to ensure code quality standards are met
 - **UI Changes**: When modifying the UI, verify functionality with `uv run pytest -k ui_smoke` to ensure the interface loads correctly
+
+### User Data Privacy Checklist
+Before finishing any task that involves logging or data handling:
+- [ ] Check for logging statements that include user input, recipe content, or parsed data
+- [ ] Ensure `safe_log_user_data()` is used for any logs containing user data
+- [ ] Verify error messages don't expose user recipe content
+- [ ] Test logging behavior with `RB_ALLOW_USER_DATA_LOGS=false` (default)
+- [ ] Review feedback/storage systems for user data exposure
+
+### Code Review Guidelines
+For pull requests, reviewers should check:
+
+**🔍 User Data Privacy Review:**
+- [ ] New logging statements use `safe_log_user_data()` when logging user content
+- [ ] Exception handlers don't expose user data in error messages
+- [ ] Database/file storage doesn't persist user data without consent
+- [ ] Debug output doesn't include recipe text, ingredient names, or user input
+- [ ] API responses don't leak user data in error details
+
+**⚠️ Red Flags to Watch For:**
+- Direct logging of variables like `recipe_text`, `user_input`, `parsed_data`
+- Exception messages that include `str(e)` when `e` could contain user data
+- Print statements or debug logs with user content
+- File storage that saves complete user recipes/inputs
+- Error responses that echo back user input
