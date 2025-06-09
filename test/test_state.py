@@ -1,4 +1,4 @@
-from recipe_board.core.state import RecipeSessionState
+from recipe_board.core.state import RecipeSessionState, ParsingState
 from recipe_board.core.recipe import Ingredient, Equipment, Action, BasicAction
 
 
@@ -13,7 +13,7 @@ class TestRecipeSessionState:
         assert state.ingredients == []
         assert state.equipment == []
         assert state.actions == []
-        assert state.workflow_step == "initial"
+        assert state.parsing_state == ParsingState.INITIAL
 
     def test_has_parsed_data_empty(self):
         """Test has_parsed_data returns False when no data is present."""
@@ -62,7 +62,7 @@ class TestRecipeSessionState:
         state.actions = [
             Action(name="mix", ingredient_ids=["id1"], equipment_ids="eq1")
         ]
-        state.workflow_step = "parsed"
+        state.parsing_state = ParsingState.COMPLETED
 
         # Clear state
         state.clear()
@@ -72,7 +72,7 @@ class TestRecipeSessionState:
         assert state.ingredients == []
         assert state.equipment == []
         assert state.actions == []
-        assert state.workflow_step == "initial"
+        assert state.parsing_state == ParsingState.INITIAL
 
     def test_to_dict_empty_state(self):
         """Test to_dict method with empty state."""
@@ -86,7 +86,7 @@ class TestRecipeSessionState:
             "equipment": [],
             "basic_actions": [],
             "actions": [],
-            "workflow_step": "initial"
+            "parsing_state": "initial"
         }
         assert result == expected
 
@@ -106,7 +106,7 @@ class TestRecipeSessionState:
         state.actions = [
             Action(name="mix", ingredient_ids=["ing1"], equipment_ids="eq1")
         ]
-        state.workflow_step = "parsed"
+        state.parsing_state = ParsingState.COMPLETED
 
         result = state.to_dict()
 
@@ -116,10 +116,10 @@ class TestRecipeSessionState:
         assert "equipment" in result
         assert "basic_actions" in result
         assert "actions" in result
-        assert "workflow_step" in result
+        assert "parsing_state" in result
 
         assert result["raw_text"] == "Test recipe"
-        assert result["workflow_step"] == "parsed"
+        assert result["parsing_state"] == "completed"
         assert len(result["ingredients"]) == 1
         assert len(result["basic_actions"]) == 1
         assert len(result["equipment"]) == 1
@@ -248,22 +248,6 @@ class TestRecipeSessionState:
         assert "Ingredients:" in result
         assert "Equipment:" in result
 
-    def test_workflow_step_progression(self):
-        """Test workflow step can be updated to track processing state."""
-        state = RecipeSessionState()
-
-        # Initial state
-        assert state.workflow_step == "initial"
-
-        # Update workflow step
-        state.workflow_step = "parsing"
-        assert state.workflow_step == "parsing"
-
-        state.workflow_step = "parsed"
-        assert state.workflow_step == "parsed"
-
-        state.workflow_step = "actions_parsed"
-        assert state.workflow_step == "actions_parsed"
 
     def test_state_with_complex_data(self):
         """Test state behavior with complex, realistic data."""
@@ -287,7 +271,7 @@ class TestRecipeSessionState:
             Action(name="whisk", ingredient_ids=[state.ingredients[0].id], equipment_ids=whisk.id)
         ]
 
-        state.workflow_step = "actions_parsed"
+        state.parsing_state = ParsingState.COMPLETED
 
         # Test all methods work together
         assert state.has_parsed_data() == True
@@ -310,4 +294,4 @@ class TestRecipeSessionState:
         assert len(state_dict["ingredients"]) == 2
         assert len(state_dict["equipment"]) == 2
         assert len(state_dict["actions"]) == 2
-        assert state_dict["workflow_step"] == "actions_parsed"
+        assert state_dict["parsing_state"] == "completed"
