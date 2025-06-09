@@ -1,6 +1,6 @@
 import os
 from huggingface_hub import InferenceClient
-from smolagents import HfApiModel, CodeAgent, RunResult
+from smolagents import InferenceClientModel, CodeAgent, RunResult
 from .prompts import parse_equipment_prompt
 from .tools import (
     extract_verbs,
@@ -184,7 +184,9 @@ def parse_actions(recipe_text: str, parsed_recipe_json: str) -> str:
 
         # Set up the agent with tools
         try:
-            hf_model = HfApiModel(model_id=model, token=os.environ["HF_TOKEN"])
+            hf_model = InferenceClientModel(
+                model_id=model, token=os.environ["HF_TOKEN"]
+            )
 
             agent = CodeAgent(
                 tools=[
