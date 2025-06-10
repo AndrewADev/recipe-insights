@@ -19,6 +19,25 @@ A tool to help hobbyist chefs discover and better understand the implicit depend
 
 **Notice**: Includes generated sample recipes that have not been tested/verified in the real world and may contain mistakes or improper instructions. Please use common sense and follow all applicable food and appliance safety recommendations when cooking!
 
+## Technical Background (Hackathon)
+
+This project takes a hybrid approach to LLM-integration, combining structured prompting with agentic workflows for complex recipe analysis:
+
+**🔍 Two-Stage AI Pipeline:**
+- **Stage 1**: Direct LLM calls with structured prompts to extract ingredients, equipment, and cooking actions from recipe text (works well with LLM's strong semantic understanding)
+- **Stage 2**: Agentic workflow using [smolagents](https://github.com/huggingface/smolagents) framework with specialized tools to analyze dependencies between extracted entities
+
+**🛠️ Key Technical Features:**
+- **Hybrid NLP approach** combining spaCy methods with LLM reasoning for robust parsing
+- **Interactive network visualization** using graph theory to display relationships between ingredients→actions→equipment.
+- **State management** with progress tracking and error handling throughout the parsing pipeline
+
+**📋 User Experience:**
+The "How To" tab provides a comprehensive walkthrough of the application flow: sample recipe selection → parsing → dependency analysis → interactive graph visualization → export capabilities. This creates an intuitive experience for hobbyist chefs to understand their recipe's hidden structure and dependencies.
+
+The application showcases how agentic AI workflows can break down complex NLP tasks into manageable, tool-assisted steps while maintaining transparency and user control throughout the process.
+
+
 ## Development
 
 Internally, the project uses `uv`. So setting up looks like:

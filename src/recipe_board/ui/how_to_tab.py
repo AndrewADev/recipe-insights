@@ -33,6 +33,7 @@ Perfect for home cooks who want to better understand their recipes! 👨‍🍳�
 - Click the **"Parse Recipe"** button to start the analysis
 - **First stage**: Ingredients and equipment are extracted
 - **Second stage**: Actions and dependencies are automatically parsed
+    - _Note: Given the non-deterministic nature of the agentic flow used here, the second stage may sometimes fail. Just click the parse button again, and it will pick up where it left off_.
 - Watch the real-time status updates as parsing progresses!
 
 ### Step 3: Review the Results ✅
