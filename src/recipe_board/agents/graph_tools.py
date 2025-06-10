@@ -126,21 +126,28 @@ def create_dependency_graph(
     # Combine all traces
     fig_data = edge_traces + node_traces
 
-    # Configure layout
     fig = go.Figure(data=fig_data)
+
     fig.update_layout(
         title=dict(
             text="Recipe Dependency Graph", font=dict(size=18, color=colors["text"])
         ),
         showlegend=True,
         hovermode="closest",
-        dragmode="pan",
+        # Use select mode to enable node interaction
+        dragmode="select",
         margin=dict(b=20, l=5, r=5, t=40),
         paper_bgcolor=colors["background"],
         font=dict(color=colors["text"]),
+        # Interactive toolbar
+        modebar=dict(
+            add=["select2d", "lasso2d", "pan2d"], remove=["autoScale2d", "resetScale2d"]
+        ),
+        # Maintain state for better interaction
+        uirevision=True,
         annotations=[
             dict(
-                text="Hover over nodes for details. Drag to explore the network.",
+                text="Hover over nodes for details. Use toolbar to select and interact with nodes.",
                 showarrow=False,
                 xref="paper",
                 yref="paper",
@@ -443,6 +450,9 @@ def _create_node_traces(
                 x=x_vals,
                 y=y_vals,
                 mode="markers+text",
+                # Enable individual point manipulation
+                connectgaps=False,
+                fill=None,
                 name=config["name"],
                 text=texts,
                 textposition="middle center",
@@ -457,6 +467,14 @@ def _create_node_traces(
                     ),  # Use consistent color per type
                     line=dict(width=3, color="white"),
                 ),
+                # Enable scatter plot dragging
+                selected=dict(
+                    marker=dict(opacity=0.9, size=max(sizes) * 1.3 if sizes else 50)
+                ),
+                unselected=dict(marker=dict(opacity=0.8)),
+                customdata=[
+                    node["id"] for node in type_nodes if node["id"] in node_positions
+                ],
             )
             traces.append(trace)
 
