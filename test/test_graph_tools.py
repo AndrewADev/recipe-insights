@@ -11,6 +11,7 @@ from recipe_board.agents.graph_tools import (
     _format_ingredient_hover,
     _format_equipment_hover,
     _format_action_hover,
+    _get_theme_colors,
 )
 from recipe_board.core.state import RecipeSessionState
 from recipe_board.core.recipe import Ingredient, Equipment, Action
@@ -97,8 +98,9 @@ class TestBuildGraphData:
     def test_empty_state_returns_empty_data(self):
         """Test that empty state returns empty nodes and edges."""
         state = RecipeSessionState()
+        colors = _get_theme_colors(False)
 
-        nodes, edges = _build_graph_data(state)
+        nodes, edges = _build_graph_data(state, colors)
 
         assert nodes == []
         assert edges == []
@@ -108,15 +110,16 @@ class TestBuildGraphData:
         state = RecipeSessionState()
         ingredient = Ingredient(name="flour", amount=2.0, unit="cups", modifiers=["all-purpose"], raw_text="2 cups flour")
         state.ingredients = [ingredient]
+        colors = _get_theme_colors(False)
 
-        nodes, edges = _build_graph_data(state)
+        nodes, edges = _build_graph_data(state, colors)
 
         assert len(nodes) == 1
         node = nodes[0]
         assert node['id'] == ingredient.id
         assert node['name'] == "flour"
         assert node['type'] == 'ingredient'
-        assert node['color'] == '#2E8B57'  # Sea green
+        assert node['color'] == colors['ingredients']
         assert "flour" in node['hover_text']
 
     def test_equipment_becomes_nodes(self):
@@ -124,15 +127,16 @@ class TestBuildGraphData:
         state = RecipeSessionState()
         equipment = Equipment(name="bowl", required=True, modifiers="large")
         state.equipment = [equipment]
+        colors = _get_theme_colors(False)
 
-        nodes, edges = _build_graph_data(state)
+        nodes, edges = _build_graph_data(state, colors)
 
         assert len(nodes) == 1
         node = nodes[0]
         assert node['id'] == equipment.id
         assert node['name'] == "bowl"
         assert node['type'] == 'equipment'
-        assert node['color'] == '#FF8C00'  # Dark orange
+        assert node['color'] == colors['equipment']
 
     def test_actions_create_nodes_and_edges(self):
         """Test that actions create action nodes and connecting edges."""
@@ -145,8 +149,9 @@ class TestBuildGraphData:
         state.ingredients = [ingredient]
         state.equipment = [equipment]
         state.actions = [action]
+        colors = _get_theme_colors(False)
 
-        nodes, edges = _build_graph_data(state)
+        nodes, edges = _build_graph_data(state, colors)
 
         # Should have 3 nodes: ingredient, equipment, action
         assert len(nodes) == 3
@@ -156,7 +161,7 @@ class TestBuildGraphData:
         assert len(action_nodes) == 1
         action_node = action_nodes[0]
         assert action_node['name'] == "mix"
-        assert action_node['color'] == '#4169E1'  # Royal blue
+        assert action_node['color'] == colors['actions']
 
         # Should have 2 edges: ingredient->action, action->equipment
         assert len(edges) == 2
