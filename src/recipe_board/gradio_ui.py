@@ -16,10 +16,11 @@ from recipe_board.core.sample_recipes import (
     create_recipe_preview,
     get_sample_recipe_choices,
 )
+from recipe_board.ui.how_to_tab import create_how_to_tab
 
 
 def create_parser_tab(session_state, main_tabs):
-    with gr.Tab(label="Parser"):
+    with gr.Tab(label="Parser", id="parser_tab"):
 
         gr.Markdown("# Recipe Board")
         gr.Markdown(
@@ -510,6 +511,9 @@ def create_parser_tab(session_state, main_tabs):
         outputs=[feedback_status],
     )
 
+    # Return key components for the Get Started button
+    return sample_dropdown, recipe_input, samples_accordion
+
 
 def create_ui():
     """Create and configure the Gradio interface."""
@@ -518,7 +522,30 @@ def create_ui():
         session_state = gr.State(RecipeSessionState())
 
         with gr.Tabs() as main_tabs:
-            create_parser_tab(session_state, main_tabs)
+            # Create how-to tab first for better UX
+            get_started_button = create_how_to_tab()
+            # Create parser tab and get component references
+            sample_dropdown, recipe_input, samples_accordion = create_parser_tab(
+                session_state, main_tabs
+            )
+
+            # Set up Get Started button functionality after both tabs are created
+            def handle_get_started():
+                """Handle Get Started button click - switch to parser tab and provide visual cues."""
+                return (
+                    gr.update(selected="parser_tab"),  # Switch to parser tab
+                    gr.update(
+                        value="",
+                        placeholder="👈 Try selecting a sample recipe first, or paste your own recipe here!",
+                    ),  # Update recipe input with helpful hint
+                    gr.update(open=True),  # Ensure samples accordion is open
+                )
+
+            # Connect the Get Started button to the handler
+            get_started_button.click(
+                fn=handle_get_started,
+                outputs=[main_tabs, recipe_input, samples_accordion],
+            )
 
     return demo
 
