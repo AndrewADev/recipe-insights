@@ -4,7 +4,6 @@ from smolagents import InferenceClientModel, CodeAgent, RunResult
 from smolagents.agent_types import AgentText
 from .prompts import parse_equipment_prompt
 from .tools import (
-    extract_verbs,
     find_ingredients_in_sentence,
     find_equipment_in_sentence,
     filter_valid_actions,
