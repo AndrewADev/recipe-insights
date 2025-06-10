@@ -18,7 +18,7 @@ from recipe_board.core.sample_recipes import (
 )
 
 
-def create_parser_tab(session_state):
+def create_parser_tab(session_state, main_tabs):
     with gr.Tab(label="Parser"):
 
         gr.Markdown("# Recipe Board")
@@ -347,6 +347,7 @@ def create_parser_tab(session_state):
                     None,
                     gr.update(visible=False),
                     gr.update(visible=False),
+                    gr.update(),  # No tab change if no actions
                 )
 
             try:
@@ -364,6 +365,9 @@ def create_parser_tab(session_state):
                     fig,
                     gr.update(visible=html_visible),
                     gr.update(visible=json_visible),
+                    gr.update(
+                        selected="visualization_tab"
+                    ),  # Switch to visualization tab
                 )
 
             except Exception as e:
@@ -372,6 +376,7 @@ def create_parser_tab(session_state):
                     None,
                     gr.update(visible=False),
                     gr.update(visible=False),
+                    gr.update(),  # No tab change on error
                 )
 
         def download_graph_html(state):
@@ -426,7 +431,7 @@ def create_parser_tab(session_state):
         visualize_button.click(
             fn=create_dependency_visualization,
             inputs=[session_state],
-            outputs=[graph_plot, download_html_btn, download_json_btn],
+            outputs=[graph_plot, download_html_btn, download_json_btn, main_tabs],
         )
 
         download_html_btn.click(
@@ -511,7 +516,9 @@ def create_ui():
     with gr.Blocks(title="Recipe Board - AI Recipe Analyzer") as demo:
         # Create session state at the Blocks level
         session_state = gr.State(RecipeSessionState())
-        create_parser_tab(session_state)
+
+        with gr.Tabs() as main_tabs:
+            create_parser_tab(session_state, main_tabs)
 
     return demo
 
