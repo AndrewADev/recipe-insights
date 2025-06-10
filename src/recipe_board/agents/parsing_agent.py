@@ -14,6 +14,82 @@ from ..core.logging_utils import safe_log_user_data
 
 model = os.environ["HF_MODEL"]
 
+# Global spaCy model cache for performance
+_spacy_nlp = None
+
+
+def _get_spacy_model():
+    """Get cached spaCy model, loading it if necessary."""
+    global _spacy_nlp
+    if _spacy_nlp is None:
+        import spacy
+        from spacy.language import Language
+
+        try:
+            _spacy_nlp = spacy.load("en_core_web_lg")
+        except OSError:
+            # Fallback to smaller model if large model not available
+            _spacy_nlp = spacy.load("en_core_web_sm")
+
+        # Register custom sentence boundary component for measurement units
+        @Language.component("unit_sentence_boundaries")
+        def unit_sentence_boundaries(doc):
+            """Ensure measurement units at sentence ends are properly detected as boundaries."""
+            for i, token in enumerate(doc[:-1]):
+                # Handle temperature patterns where F/C and period are in same token (like "350F.")
+                if token.text.endswith(("F.", "C.")) and i + 1 < len(doc):
+                    doc[i + 1].is_sent_start = True
+                # Handle degree symbols with period in same token "350°F." and "180°C."
+                elif token.text.endswith(("°F.", "°C.")) and i + 1 < len(doc):
+                    doc[i + 1].is_sent_start = True
+                # Handle separated tokens: "350F" + "."
+                elif (
+                    token.text.endswith(("F", "C"))
+                    and i + 1 < len(doc)
+                    and doc[i + 1].text == "."
+                    and i + 2 < len(doc)
+                ):
+                    doc[i + 2].is_sent_start = True
+                # Handle separated degree symbols: "350°F" + "."
+                elif (
+                    token.text.endswith(("°F", "°C"))
+                    and i + 1 < len(doc)
+                    and doc[i + 1].text == "."
+                    and i + 2 < len(doc)
+                ):
+                    doc[i + 2].is_sent_start = True
+            return doc
+
+        _spacy_nlp.add_pipe("unit_sentence_boundaries", before="parser")
+
+    return _spacy_nlp
+
+
+def _build_sentence_context(raw_text: str) -> dict[int, str]:
+    """Build indexed sentence context from recipe text using spaCy.
+
+    Args:
+        raw_text: The raw recipe text
+
+    Returns:
+        Dictionary mapping sentence index to sentence text (consecutive indexing)
+    """
+    nlp = _get_spacy_model()
+
+    # Process text with spaCy for sentence segmentation
+    doc = nlp(raw_text)
+
+    # Build sentence context mapping with consecutive indexing
+    sentence_context = {}
+    index = 0
+    for sent in doc.sents:
+        sentence_text = sent.text.strip()
+        if sentence_text:  # Only include non-empty sentences
+            sentence_context[index] = sentence_text
+            index += 1
+
+    return sentence_context
+
 
 def parse_dependencies(state: RecipeSessionState) -> RecipeSessionState:
     """Parse action dependencies from recipe state with pre-identified basic actions.
@@ -66,7 +142,7 @@ def parse_dependencies(state: RecipeSessionState) -> RecipeSessionState:
     ]
 
     agent_prompt = f"""
-You are a recipe analysis expert. Your task is to link pre-identified cooking verbs to specific ingredients and equipment.
+You are a recipe analysis expert. Your task is to link pre-identified cooking verbs to specific ingredients and equipment using sentence context.
 
 You have access to these tools:
 - find_ingredients_in_sentence: Find ingredient names in a single sentence
@@ -74,11 +150,11 @@ You have access to these tools:
 - filter_valid_actions: Remove actions that have no ingredients or equipment
 - validate_action_structure: Ensure actions have proper structure and field types
 
-Available ingredients are stored in: `available_ingredients`
-
-Available equipment is stored in: `available_ingredients`
-
-Available basic actions (with id, action_sentence; identified, but not yet associated with ingredients nor equipment): are stored in `available_actions`
+Available data:
+- `available_ingredients`: List of ingredient objects with IDs and names
+- `available_equipment`: List of equipment objects with IDs and names
+- `available_actions`: Basic actions with verb, sentence, and sentence_index
+- `sentence_context`: Dict mapping sentence index → sentence text for context analysis
 
 === The original Recipe ===
 {state.raw_text}
@@ -95,17 +171,31 @@ Your goal: Return a JSON object with this structure:
   ]
 }}
 
-Steps:
-1. For each basic action, use its sentence to find ingredients/equipment:
-   - find_ingredients_in_sentence(sentence=action.sentence, ingredient_names=ingredient_list)
-   - find_equipment_in_sentence(sentence=action.sentence, equipment_names=equipment_list)
-2. Create action objects linking verbs to the appropriate ingredient/equipment IDs
-3. Call filter_valid_actions(actions=validated_actions)
-4. OUTPUT FINAL JSON: {{"actions": [filtered_actions]}}
+ENHANCED CONTEXT ANALYSIS:
+For each basic action, analyze not just the action sentence, but also check the 2 preceding sentences for additional context:
 
-Process each basic action systematically, matching ingredients and equipment within each sentence context.
-Use the filtering tools at the end instead of writing your own filtering code.
+1. Get the action's sentence_index from `available_actions`
+2. Look up the sentence in `sentence_context[sentence_index]`
+3. Also check `sentence_context[sentence_index-1]` and `sentence_context[sentence_index-2]` (if they exist)
+4. Use ALL relevant sentences when calling the tools:
+   - find_ingredients_in_sentence(sentence=combined_context, ingredient_names=ingredient_list)
+   - find_equipment_in_sentence(sentence=combined_context, equipment_names=equipment_list)
+
+This context analysis helps capture ingredients/equipment mentioned in previous sentences that are still relevant to the current action.
+
+Steps:
+1. For each basic action, build context from current + preceding sentences
+2. Use the expanded context to find ingredients/equipment with tools
+3. Create action objects linking verbs to the appropriate ingredient/equipment IDs
+4. Call filter_valid_actions(actions=validated_actions)
+5. OUTPUT FINAL JSON: {{"actions": [filtered_actions]}}
+
+Process each basic action systematically, using sentence context for better dependency detection.
 """
+
+    # Build sentence context for enhanced dependency detection
+    sentence_context = _build_sentence_context(state.raw_text)
+    msg.info(f"Built sentence context with {len(sentence_context)} sentences")
 
     # Run the agent
     try:
@@ -116,6 +206,7 @@ Use the filtering tools at the end instead of writing your own filtering code.
                 "available_ingredients": state.ingredients,
                 "available_equipment": state.equipment,
                 "available_actions": basic_actions_info,
+                "sentence_context": sentence_context,
             },
         )
 
