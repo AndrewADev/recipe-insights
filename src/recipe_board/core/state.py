@@ -116,9 +116,9 @@ class RecipeSessionState:
                     if ing.id in action.ingredient_ids
                 ]
                 parts.append(f"Ingredients: {', '.join(ing_names)}")
-            if action.equipment_ids:
+            if action.equipment_id:
                 eq_name = next(
-                    (eq.name for eq in self.equipment if eq.id == action.equipment_ids),
+                    (eq.name for eq in self.equipment if eq.id == action.equipment_id),
                     "Unknown",
                 )
                 parts.append(f"Equipment: {eq_name}")

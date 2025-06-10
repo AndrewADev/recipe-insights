@@ -14,12 +14,12 @@ def test_parse_dependencies_success(monkeypatch):
             {
                 "name": "mix",
                 "ingredient_ids": ["ing1", "ing2"],
-                "equipment_ids": "eq1"
+                "equipment_id": "eq1"
             },
             {
                 "name": "whisk",
                 "ingredient_ids": ["ing1", "ing2"],
-                "equipment_ids": "eq2"
+                "equipment_id": "eq2"
             }
         ]
     }

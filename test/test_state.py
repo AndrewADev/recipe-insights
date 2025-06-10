@@ -60,7 +60,7 @@ class TestRecipeSessionState:
             Equipment(name="mixing bowl", required=True, modifiers=None)
         ]
         state.actions = [
-            Action(name="mix", ingredient_ids=["id1"], equipment_ids="eq1")
+            Action(name="mix", ingredient_ids=["id1"], equipment_id="eq1")
         ]
         state.parsing_state = ParsingState.COMPLETED
 
@@ -104,7 +104,7 @@ class TestRecipeSessionState:
             BasicAction(verb="mix", sentence="Mix flour in bowl.", sentence_index=0)
         ]
         state.actions = [
-            Action(name="mix", ingredient_ids=["ing1"], equipment_ids="eq1")
+            Action(name="mix", ingredient_ids=["ing1"], equipment_id="eq1")
         ]
         state.parsing_state = ParsingState.COMPLETED
 
@@ -211,8 +211,8 @@ class TestRecipeSessionState:
 
         # Create actions that reference the ingredient and equipment IDs
         state.actions = [
-            Action(name="mix", ingredient_ids=[flour.id, salt.id], equipment_ids=bowl.id),
-            Action(name="whisk", ingredient_ids=[flour.id], equipment_ids=whisk.id)
+            Action(name="mix", ingredient_ids=[flour.id, salt.id], equipment_id=bowl.id),
+            Action(name="whisk", ingredient_ids=[flour.id], equipment_id=whisk.id)
         ]
 
         result = state.format_actions_for_display()
@@ -238,7 +238,7 @@ class TestRecipeSessionState:
 
         # Create action with non-existent IDs
         state.actions = [
-            Action(name="mix", ingredient_ids=["nonexistent-id"], equipment_ids="another-nonexistent-id")
+            Action(name="mix", ingredient_ids=["nonexistent-id"], equipment_id="another-nonexistent-id")
         ]
 
         result = state.format_actions_for_display()
@@ -267,8 +267,8 @@ class TestRecipeSessionState:
 
         # Add actions
         state.actions = [
-            Action(name="mix", ingredient_ids=[state.ingredients[0].id, state.ingredients[1].id], equipment_ids=bowl.id),
-            Action(name="whisk", ingredient_ids=[state.ingredients[0].id], equipment_ids=whisk.id)
+            Action(name="mix", ingredient_ids=[state.ingredients[0].id, state.ingredients[1].id], equipment_id=bowl.id),
+            Action(name="whisk", ingredient_ids=[state.ingredients[0].id], equipment_id=whisk.id)
         ]
 
         state.parsing_state = ParsingState.COMPLETED

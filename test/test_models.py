@@ -423,7 +423,7 @@ class TestBasicActionsAndDependencies:
         agent_text_content = '''
         Based on the ingredients and equipment, here are the actions:
 
-        {"actions": [{"name": "mix", "ingredient_ids": ["id1"], "equipment_ids": "eq1"}]}
+        {"actions": [{"name": "mix", "ingredient_ids": ["id1"], "equipment_id": "eq1"}]}
 
         This JSON represents the cooking actions.
         '''
@@ -452,4 +452,4 @@ class TestBasicActionsAndDependencies:
         assert len(result.actions) == 1
         assert result.actions[0].name == "mix"
         assert result.actions[0].ingredient_ids == ["id1"]
-        assert result.actions[0].equipment_ids == "eq1"
+        assert result.actions[0].equipment_id == "eq1"

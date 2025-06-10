@@ -456,7 +456,7 @@ Your goal: Return a JSON object with this structure:
     {{
       "name": "action_verb",
       "ingredient_ids": ["id1", "id2"],
-      "equipment_ids": "equipment_id"
+      "equipment_id": "equipment_id",
     }}
   ]
 }}
@@ -540,7 +540,7 @@ Use the filtering tools at the end instead of writing your own filtering code.
                 action = Action(
                     name=action_item.get("name", ""),
                     ingredient_ids=action_item.get("ingredient_ids", []),
-                    equipment_ids=action_item.get("equipment_ids", ""),
+                    equipment_id=action_item.get("equipment_id", ""),
                 )
                 actions.append(action)
             except Exception as e:

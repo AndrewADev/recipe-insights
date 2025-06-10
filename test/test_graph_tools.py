@@ -55,7 +55,7 @@ class TestCreateDependencyGraph:
         action1 = Action(
             name="mix",
             ingredient_ids=[ingredient1.id, ingredient2.id],
-            equipment_ids=equipment1.id
+            equipment_id=equipment1.id
         )
         state.actions = [action1]
 
@@ -75,7 +75,7 @@ class TestCreateDependencyGraph:
         equipment1 = Equipment(name="bowl", required=True, modifiers=None)
         state.equipment = [equipment1]
 
-        action1 = Action(name="mix", ingredient_ids=[ingredient1.id], equipment_ids=equipment1.id)
+        action1 = Action(name="mix", ingredient_ids=[ingredient1.id], equipment_id=equipment1.id)
         state.actions = [action1]
 
         fig = create_dependency_graph(state)
@@ -141,7 +141,7 @@ class TestBuildGraphData:
 
         ingredient = Ingredient(name="flour", amount=2.0, unit="cups", modifiers=[], raw_text="2 cups flour")
         equipment = Equipment(name="bowl", required=True, modifiers=None)
-        action = Action(name="mix", ingredient_ids=[ingredient.id], equipment_ids=equipment.id)
+        action = Action(name="mix", ingredient_ids=[ingredient.id], equipment_id=equipment.id)
 
         state.ingredients = [ingredient]
         state.equipment = [equipment]
@@ -237,7 +237,7 @@ class TestHoverTextFormatting:
         action = Action(
             name="mix",
             ingredient_ids=[ingredient1.id, ingredient2.id],
-            equipment_ids=equipment.id
+            equipment_id=equipment.id
         )
 
         hover_text = _format_action_hover(action, state)

@@ -42,7 +42,7 @@ class Action(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     name: str
     ingredient_ids: list[str]
-    equipment_ids: str
+    equipment_id: str
 
 
 class RecipeStep(BaseModel):

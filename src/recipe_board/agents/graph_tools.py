@@ -149,11 +149,11 @@ def _build_graph_data(state: RecipeSessionState) -> Tuple[List[Dict], List[Dict]
             )
 
         # Create edge from action to equipment
-        if action.equipment_ids:
+        if action.equipment_id:
             edges.append(
                 {
                     "source": action_node_id,
-                    "target": action.equipment_ids,
+                    "target": action.equipment_id,
                     "type": "action_to_equipment",
                 }
             )
@@ -196,9 +196,9 @@ def _format_action_hover(action, state: RecipeSessionState) -> str:
             parts.append(f"Ingredients: {', '.join(ingredient_names)}")
 
     # Find equipment name
-    if action.equipment_ids:
+    if action.equipment_id:
         equipment_name = next(
-            (eq.name for eq in state.equipment if eq.id == action.equipment_ids),
+            (eq.name for eq in state.equipment if eq.id == action.equipment_id),
             "Unknown",
         )
         parts.append(f"Equipment: {equipment_name}")
