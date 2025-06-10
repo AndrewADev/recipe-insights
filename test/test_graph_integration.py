@@ -46,17 +46,17 @@ class TestGraphIntegration:
         mix_action = Action(
             name="mix",
             ingredient_ids=[flour.id, salt.id],
-            equipment_ids=bowl.id
+            equipment_id=bowl.id
         )
         whisk_action = Action(
             name="whisk",
             ingredient_ids=[flour.id, salt.id],
-            equipment_ids=whisk.id
+            equipment_id=whisk.id
         )
         bake_action = Action(
             name="bake",
             ingredient_ids=[flour.id],  # Assuming mixed flour goes to baking
-            equipment_ids=oven.id
+            equipment_id=oven.id
         )
         state.actions = [mix_action, whisk_action, bake_action]
 
@@ -86,7 +86,7 @@ class TestGraphIntegration:
         # Single ingredient, equipment, action
         ingredient = Ingredient(name="egg", amount=1, unit="piece", modifiers=[], raw_text="1 egg")
         equipment = Equipment(name="pan", required=True, modifiers=None)
-        action = Action(name="crack", ingredient_ids=[ingredient.id], equipment_ids=equipment.id)
+        action = Action(name="crack", ingredient_ids=[ingredient.id], equipment_id=equipment.id)
 
         state.ingredients = [ingredient]
         state.equipment = [equipment]
@@ -123,10 +123,10 @@ class TestGraphIntegration:
 
         # Multiple actions with various connections
         actions = [
-            Action(name="mix", ingredient_ids=[ingredients[0].id, ingredients[1].id], equipment_ids=equipment[0].id),
-            Action(name="whisk", ingredient_ids=[ingredients[2].id], equipment_ids=equipment[1].id),
-            Action(name="combine", ingredient_ids=[ingredients[0].id, ingredients[2].id, ingredients[3].id], equipment_ids=equipment[0].id),
-            Action(name="bake", ingredient_ids=[ingredients[0].id], equipment_ids=equipment[3].id)
+            Action(name="mix", ingredient_ids=[ingredients[0].id, ingredients[1].id], equipment_id=equipment[0].id),
+            Action(name="whisk", ingredient_ids=[ingredients[2].id], equipment_id=equipment[1].id),
+            Action(name="combine", ingredient_ids=[ingredients[0].id, ingredients[2].id, ingredients[3].id], equipment_id=equipment[0].id),
+            Action(name="bake", ingredient_ids=[ingredients[0].id], equipment_id=equipment[3].id)
         ]
 
         state.ingredients = ingredients
