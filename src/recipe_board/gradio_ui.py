@@ -496,13 +496,13 @@ def create_parser_tab(session_state, main_tabs):
         download_html_btn.click(
             fn=download_graph_html,
             inputs=[session_state],
-            outputs=None,
+            outputs=[download_html_btn],
         )
 
         download_json_btn.click(
             fn=download_graph_json,
             inputs=[session_state],
-            outputs=None,
+            outputs=[download_json_btn],
         )
 
         # Feedback components
