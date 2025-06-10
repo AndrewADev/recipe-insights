@@ -37,6 +37,20 @@ The "How To" tab provides a comprehensive walkthrough of the application flow: s
 
 The application showcases how agentic AI workflows can break down complex NLP tasks into manageable, tool-assisted steps while maintaining transparency and user control throughout the process.
 
+### Explanation videos
+
+Unfortunately sound capture wasn't working properly with Gradio capture, so these are without sound. See the above description, as well as the "How to" tab in the application to get an idea of how to use the app.
+
+**Part 1**
+
+https://github.com/user-attachments/assets/31ba6146-5570-4dd2-a1f3-6358e6c3716f
+
+
+**Part 2**
+
+https://github.com/user-attachments/assets/4de8d2c2-f990-4c51-9522-781b4bf948fa
+
+
 
 ## Development
 
