@@ -422,10 +422,6 @@ def parse_dependencies(state: RecipeSessionState) -> RecipeSessionState:
         msg.fail(f"Error creating agent: {e}")
         raise ValueError(f"Failed to create agent: {e}")
 
-    # Prepare ingredient and equipment names for the agent
-    ingredient_names = [ing.name for ing in state.ingredients]
-    equipment_names = [eq.name for eq in state.equipment]
-
     # Create the agent prompt with pre-identified basic actions
     basic_actions_info = [
         {"verb": ba.verb, "sentence": ba.sentence, "sentence_index": ba.sentence_index}
@@ -441,14 +437,15 @@ You have access to these tools:
 - filter_valid_actions: Remove actions that have no ingredients or equipment
 - validate_action_structure: Ensure actions have proper structure and field types
 
-Available ingredients (with IDs):
-{[{"name": ing.name, "id": ing.id} for ing in state.ingredients]}
+Available ingredients are stored in: `available_ingredients`
 
-Available equipment (with IDs):
-{[{"name": eq.name, "id": eq.id} for eq in state.equipment]}
+Available equipment is stored in: `available_ingredients`
 
-Pre-identified basic actions to process:
-{basic_actions_info}
+Available basic actions (with id, action_sentence; identified, but not yet associated with ingredients nor equipment): are stored in `available_actions`
+
+=== The original Recipe ===
+{state.raw_text}
+=== end original recipe ===
 
 Your goal: Return a JSON object with this structure:
 {{
@@ -456,15 +453,15 @@ Your goal: Return a JSON object with this structure:
     {{
       "name": "action_verb",
       "ingredient_ids": ["id1", "id2"],
-      "equipment_id": "equipment_id",
+      "equipment_id": "equipment_id"
     }}
   ]
 }}
 
 Steps:
 1. For each basic action, use its sentence to find ingredients/equipment:
-   - find_ingredients_in_sentence(sentence=action_sentence, ingredient_names=ingredient_list)
-   - find_equipment_in_sentence(sentence=action_sentence, equipment_names=equipment_list)
+   - find_ingredients_in_sentence(sentence=action.sentence, ingredient_names=ingredient_list)
+   - find_equipment_in_sentence(sentence=action.sentence, equipment_names=equipment_list)
 2. Create action objects linking verbs to the appropriate ingredient/equipment IDs
 3. Call filter_valid_actions(actions=validated_actions)
 4. OUTPUT FINAL JSON: {{"actions": [filtered_actions]}}
@@ -475,8 +472,15 @@ Use the filtering tools at the end instead of writing your own filtering code.
 
     # Run the agent
     try:
-        result = agent.run(agent_prompt)
         state.parsing_state = ParsingState.PARSING_DEPENDENCIES
+        result = agent.run(
+            agent_prompt,
+            additional_args={
+                "available_ingredients": state.ingredients,
+                "available_equipment": state.equipment,
+                "available_actions": basic_actions_info,
+            },
+        )
 
         # Try to extract JSON from the result and convert to Action objects
         actions_data = None
@@ -553,15 +557,5 @@ Use the filtering tools at the end instead of writing your own filtering code.
 
     except Exception as e:
         msg.warn(f"Agent execution failed: {e}")
+        state.parsing_state = ParsingState.ERROR
         return state
-
-
-# Backward compatibility alias
-def parse_actions(state: RecipeSessionState) -> RecipeSessionState:
-    """
-    Backward compatibility alias for parse_dependencies.
-
-    DEPRECATED: Use parse_dependencies instead.
-    """
-    msg.warn("parse_actions is deprecated, use parse_dependencies instead")
-    return parse_dependencies(state)

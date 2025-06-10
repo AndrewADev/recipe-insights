@@ -11,6 +11,7 @@ class ParsingState(Enum):
     PARSING_RECIPE = "parsing_recipe"
     PARSING_DEPENDENCIES = "parsing_dependencies"
     COMPLETED = "completed"
+    ERROR = "error"
     DEPENDENCIES_ERROR = "dependencies_error"
 
 
