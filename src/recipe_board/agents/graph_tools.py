@@ -5,11 +5,67 @@ Tools for creating dependency graph visualizations from recipe data.
 import plotly.graph_objects as go
 from typing import Dict, List, Tuple, Any
 import math
+import os
 from ..core.state import RecipeSessionState
 from wasabi import msg
 
 
-def create_dependency_graph(state: RecipeSessionState) -> go.Figure:
+def _detect_dark_mode() -> bool:
+    """
+    Detect if dark mode should be used based on environment or system settings.
+    """
+    # Check environment variable first
+    dark_mode_env = os.getenv("GRADIO_THEME", "").lower()
+    if "dark" in dark_mode_env:
+        return True
+
+    # Try to detect system dark mode (macOS)
+    try:
+        import subprocess
+
+        result = subprocess.run(
+            ["defaults", "read", "-g", "AppleInterfaceStyle"],
+            capture_output=True,
+            text=True,
+            timeout=2,
+        )
+        if result.returncode == 0 and "dark" in result.stdout.lower():
+            return True
+    except (subprocess.TimeoutExpired, FileNotFoundError, Exception):
+        pass
+
+    return False
+
+
+def _get_theme_colors(dark_mode: bool) -> Dict[str, str]:
+    """
+    Get color scheme based on theme mode.
+    """
+    if dark_mode:
+        return {
+            "background": "#2F2F2F",
+            "text": "#FFFFFF",
+            "annotation_text": "#CCCCCC",
+            "edges": "#666666",
+            "ingredients": "#00FF7F",  # Bright green
+            "equipment": "#FF6347",  # Tomato (better for dark)
+            "actions": "#87CEEB",  # Sky blue (better for dark)
+        }
+    else:
+        return {
+            "background": "white",
+            "text": "#000000",
+            "annotation_text": "gray",
+            "edges": "#888888",
+            "ingredients": "#00FF7F",  # Spring green
+            "equipment": "#FF4500",  # Orange red
+            "actions": "#1E90FF",  # Dodger blue
+        }
+
+
+def create_dependency_graph(
+    state: RecipeSessionState, dark_mode: bool = None
+) -> go.Figure:
     """
     Create a network dependency graph from recipe state.
 
@@ -21,10 +77,17 @@ def create_dependency_graph(state: RecipeSessionState) -> go.Figure:
 
     Args:
         state: RecipeSessionState with parsed ingredients, equipment, and actions
+        dark_mode: Whether to use dark mode colors. If None, auto-detect from system.
 
     Returns:
         Plotly Figure object with interactive network graph
     """
+    # Auto-detect dark mode if not specified
+    if dark_mode is None:
+        dark_mode = _detect_dark_mode()
+
+    # Get theme colors
+    colors = _get_theme_colors(dark_mode)
     if not state.actions:
         # Return empty figure with message
         fig = go.Figure()
@@ -37,24 +100,25 @@ def create_dependency_graph(state: RecipeSessionState) -> go.Figure:
             xanchor="center",
             yanchor="middle",
             showarrow=False,
-            font=dict(size=16, color="gray"),
+            font=dict(size=16, color=colors["annotation_text"]),
         )
         fig.update_layout(
             title="Recipe Dependency Graph",
             showlegend=False,
             xaxis={"visible": False},
             yaxis={"visible": False},
+            plot_bgcolor=colors["background"],
         )
         return fig
 
     # Build node and edge data
-    nodes, edges = _build_graph_data(state)
+    nodes, edges = _build_graph_data(state, colors)
 
     # Calculate node positions using force-directed layout
     node_positions = _calculate_force_directed_positions(nodes, edges)
 
     # Create edge traces
-    edge_traces = _create_edge_traces(edges, node_positions)
+    edge_traces = _create_edge_traces(edges, node_positions, colors)
 
     # Create node traces by type
     node_traces = _create_node_traces(nodes, node_positions)
@@ -65,10 +129,15 @@ def create_dependency_graph(state: RecipeSessionState) -> go.Figure:
     # Configure layout
     fig = go.Figure(data=fig_data)
     fig.update_layout(
-        title=dict(text="Recipe Dependency Graph", font=dict(size=16)),
+        title=dict(
+            text="Recipe Dependency Graph", font=dict(size=18, color=colors["text"])
+        ),
         showlegend=True,
         hovermode="closest",
+        dragmode="pan",
         margin=dict(b=20, l=5, r=5, t=40),
+        paper_bgcolor=colors["background"],
+        font=dict(color=colors["text"]),
         annotations=[
             dict(
                 text="Hover over nodes for details. Drag to explore the network.",
@@ -79,18 +148,20 @@ def create_dependency_graph(state: RecipeSessionState) -> go.Figure:
                 y=-0.002,
                 xanchor="left",
                 yanchor="bottom",
-                font=dict(color="gray", size=12),
+                font=dict(color=colors["annotation_text"], size=12),
             )
         ],
         xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
         yaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
-        plot_bgcolor="white",
+        plot_bgcolor=colors["background"],
     )
 
     return fig
 
 
-def _build_graph_data(state: RecipeSessionState) -> Tuple[List[Dict], List[Dict]]:
+def _build_graph_data(
+    state: RecipeSessionState, colors: Dict[str, str]
+) -> Tuple[List[Dict], List[Dict]]:
     """Build nodes and edges data structures from recipe state."""
     nodes = []
     edges = []
@@ -102,8 +173,8 @@ def _build_graph_data(state: RecipeSessionState) -> Tuple[List[Dict], List[Dict]
                 "id": ingredient.id,
                 "name": ingredient.name,
                 "type": "ingredient",
-                "size": 20,
-                "color": "#2E8B57",  # Sea green
+                "size": 35,
+                "color": colors["ingredients"],
                 "symbol": "circle",
                 "hover_text": _format_ingredient_hover(ingredient),
             }
@@ -116,8 +187,8 @@ def _build_graph_data(state: RecipeSessionState) -> Tuple[List[Dict], List[Dict]
                 "id": equipment.id,
                 "name": equipment.name,
                 "type": "equipment",
-                "size": 25,
-                "color": "#FF8C00",  # Dark orange
+                "size": 40,
+                "color": colors["equipment"],
                 "symbol": "square",
                 "hover_text": _format_equipment_hover(equipment),
             }
@@ -131,8 +202,8 @@ def _build_graph_data(state: RecipeSessionState) -> Tuple[List[Dict], List[Dict]
                 "id": action_node_id,
                 "name": action.name,
                 "type": "action",
-                "size": 30,
-                "color": "#4169E1",  # Royal blue
+                "size": 45,
+                "color": colors["actions"],
                 "symbol": "diamond",
                 "hover_text": _format_action_hover(action, state),
             }
@@ -292,7 +363,9 @@ def _calculate_force_directed_positions(
 
 
 def _create_edge_traces(
-    edges: List[Dict], node_positions: Dict[str, Tuple[float, float]]
+    edges: List[Dict],
+    node_positions: Dict[str, Tuple[float, float]],
+    colors: Dict[str, str],
 ) -> List[go.Scatter]:
     """Create edge traces for the graph."""
     edge_x = []
@@ -312,7 +385,7 @@ def _create_edge_traces(
     edge_trace = go.Scatter(
         x=edge_x,
         y=edge_y,
-        line=dict(width=2, color="#888"),
+        line=dict(width=3, color=colors["edges"]),
         hoverinfo="none",
         mode="lines",
         showlegend=False,
@@ -373,7 +446,7 @@ def _create_node_traces(
                 name=config["name"],
                 text=texts,
                 textposition="middle center",
-                textfont=dict(size=10, color="white"),
+                textfont=dict(size=12, color="white", family="Arial Black"),
                 hoverinfo="text",
                 hovertext=hovers,
                 marker=dict(
@@ -382,7 +455,7 @@ def _create_node_traces(
                     color=(
                         colors[0] if colors else "#888"
                     ),  # Use consistent color per type
-                    line=dict(width=2, color="white"),
+                    line=dict(width=3, color="white"),
                 ),
             )
             traces.append(trace)
