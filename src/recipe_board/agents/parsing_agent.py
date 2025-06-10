@@ -53,7 +53,7 @@ def parse_dependencies(state: RecipeSessionState) -> RecipeSessionState:
             ],
             model=hf_model,
             additional_authorized_imports=["json"],
-            max_steps=8,  # Reduced since we don't need extract_verbs
+            max_steps=10,
         )
     except Exception as e:
         msg.fail(f"Error creating agent: {e}")
