@@ -1,15 +1,6 @@
 import uuid
 from pydantic import BaseModel, Field
 from typing import Optional
-from enum import Enum
-
-
-class IngredientState(Enum):
-    RAW = "raw"
-    CLEANED = "cleaned"
-    CHOPPED = "chopped"
-    COOKED = "cooked"
-    # TODO: how many/what kind of states?
 
 
 class Ingredient(BaseModel):

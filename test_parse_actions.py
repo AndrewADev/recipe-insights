@@ -24,7 +24,7 @@ def test_parse_dependencies_success(monkeypatch):
         ]
     }
 
-    def mock_agent_run(self, prompt):
+    def mock_agent_run(self, prompt, additional_args=None):
         print(f"Mock agent received prompt: {prompt[:100]}...")
         return mock_response
 
