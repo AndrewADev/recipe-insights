@@ -20,7 +20,7 @@ from recipe_board.ui.how_to_tab import create_how_to_tab
 
 
 def create_parser_tab(session_state, main_tabs):
-    with gr.Tab(label="Parser", id="parser_tab"):
+    with gr.Tab(label="Recipe", id="parser_tab"):
 
         gr.Markdown("# Recipe Insights")
         gr.Markdown(
@@ -34,7 +34,9 @@ def create_parser_tab(session_state, main_tabs):
         with gr.Row():
             with gr.Column(scale=1):
                 # Sample recipe dropdown and preview
-                with gr.Accordion("Sample Recipes", open=True) as samples_accordion:
+                with gr.Accordion(
+                    "Sample Recipes", open=True, elem_id="samples-accordion"
+                ) as samples_accordion:
                     sample_dropdown = gr.Dropdown(
                         choices=recipe_choices,
                         label="Choose a sample recipe",
@@ -64,32 +66,23 @@ def create_parser_tab(session_state, main_tabs):
 
                 parse_button = gr.Button("Parse Recipe", variant="primary", size="lg")
                 visualize_button = gr.Button(
-                    "Visualize Dependencies",
+                    "Get Insights",
                     variant="primary",
                     size="lg",
                     interactive=False,
                 )
 
             with gr.Column(scale=1):
-                parsed_output = gr.Textbox(
-                    label="Parsed Results",
-                    placeholder="Parsed ingredients and equipment will appear here...",
-                    lines=8,
-                    max_lines=12,
+                # Combined results: Ingredients + Equipment + Basic Actions
+                combined_results = gr.Markdown(
+                    value="**Click 'Parse Recipe' to analyze your recipe and see ingredients, equipment, and basic actions here.**",
+                    elem_classes=["results-display"],
                 )
 
-                basic_actions_output = gr.Textbox(
-                    label="Basic Actions",
-                    placeholder="Basic cooking actions (verbs) will appear here after recipe parsing...",
-                    lines=6,
-                    max_lines=10,
-                )
-
-                actions_output = gr.Textbox(
-                    label="Action Dependencies",
-                    placeholder="Action dependencies will appear here after dependency parsing...",
-                    lines=8,
-                    max_lines=12,
+                # Separate action dependencies display
+                actions_output = gr.Markdown(
+                    value="**Action dependencies will appear here after dependency parsing...**",
+                    elem_classes=["actions-display"],
                 )
 
         def get_button_text(parsing_state):
@@ -125,9 +118,8 @@ def create_parser_tab(session_state, main_tabs):
 
                 # Yield immediate button state update
                 yield (
-                    "Parsing recipe...",  # Show immediate feedback
-                    "Parsing recipe...",
-                    "",
+                    "**Parsing recipe...**",  # Show immediate feedback in markdown
+                    "**Parsing dependencies...**",  # Placeholder for dependencies
                     state,
                     gr.update(value="Parsing...", interactive=False),
                     gr.update(interactive=False),
@@ -140,8 +132,10 @@ def create_parser_tab(session_state, main_tabs):
                 # Format output for display
                 ingredients_display = updated_state.format_ingredients_for_display()
                 equipment_display = updated_state.format_equipment_for_display()
-                combined_output = f"## Ingredients\n{ingredients_display}\n\n## Equipment\n{equipment_display}"
                 basic_actions_display = updated_state.format_basic_actions_for_display()
+
+                # Create combined markdown for ingredients + equipment + basic actions
+                combined_output = f"## Ingredients\n{ingredients_display}\n\n## Equipment\n{equipment_display}\n\n## Basic Actions\n{basic_actions_display}"
 
                 # Check if recipe parsing was successful
                 has_basic_data = updated_state.has_parsed_data()
@@ -152,7 +146,6 @@ def create_parser_tab(session_state, main_tabs):
                     updated_state.parsing_state = ParsingState.INITIAL
                     yield (
                         combined_output,
-                        basic_actions_display,
                         "",  # Empty actions output
                         updated_state,
                         gr.update(
@@ -167,8 +160,7 @@ def create_parser_tab(session_state, main_tabs):
                 updated_state.parsing_state = ParsingState.PARSING_DEPENDENCIES
                 yield (
                     combined_output,
-                    basic_actions_display,
-                    "Parsing dependencies...",
+                    "**Parsing dependencies...**",
                     updated_state,
                     gr.update(value="Parsing Dependencies...", interactive=False),
                     gr.update(interactive=False),
@@ -183,9 +175,12 @@ def create_parser_tab(session_state, main_tabs):
                     actions_display = final_state.format_actions_for_display()
                     has_actions = len(final_state.actions) > 0
 
+                    # Add header to actions display
+                    if actions_display.strip():
+                        actions_display = f"## Action Dependencies\n{actions_display}"
+
                     yield (
                         combined_output,
-                        basic_actions_display,
                         actions_display,
                         final_state,
                         gr.update(
@@ -202,8 +197,7 @@ def create_parser_tab(session_state, main_tabs):
 
                     yield (
                         combined_output,
-                        basic_actions_display,
-                        f"Error parsing dependencies: {str(dep_error)}",
+                        f"**Error parsing dependencies:** {str(dep_error)}",
                         updated_state,
                         gr.update(
                             value=get_button_text(updated_state.parsing_state),
@@ -216,11 +210,10 @@ def create_parser_tab(session_state, main_tabs):
                 # Recipe parsing failed
                 msg.fail(f"Error parsing recipe: {e}")
                 state.parsing_state = ParsingState.INITIAL
-                error_msg = f"Error parsing recipe: {str(e)}"
+                error_msg = f"**Error parsing recipe:** {str(e)}"
                 yield (
                     error_msg,
-                    "Error: No basic actions found",
-                    "",
+                    "",  # Empty actions output
                     state,
                     gr.update(
                         value=get_button_text(state.parsing_state), interactive=True
@@ -236,13 +229,12 @@ def create_parser_tab(session_state, main_tabs):
                 # Show immediate feedback
                 ingredients_display = state.format_ingredients_for_display()
                 equipment_display = state.format_equipment_for_display()
-                combined_output = f"## Ingredients\n{ingredients_display}\n\n## Equipment\n{equipment_display}"
                 basic_actions_display = state.format_basic_actions_for_display()
+                combined_output = f"## Ingredients\n{ingredients_display}\n\n## Equipment\n{equipment_display}\n\n## Basic Actions\n{basic_actions_display}"
 
                 yield (
                     combined_output,
-                    basic_actions_display,
-                    "Retrying dependency parsing...",
+                    "**Retrying dependency parsing...**",
                     state,
                     gr.update(value="Parsing Dependencies...", interactive=False),
                     gr.update(interactive=False),
@@ -255,15 +247,18 @@ def create_parser_tab(session_state, main_tabs):
                 # Format updated displays
                 ingredients_display = updated_state.format_ingredients_for_display()
                 equipment_display = updated_state.format_equipment_for_display()
-                combined_output = f"## Ingredients\n{ingredients_display}\n\n## Equipment\n{equipment_display}"
                 basic_actions_display = updated_state.format_basic_actions_for_display()
+                combined_output = f"## Ingredients\n{ingredients_display}\n\n## Equipment\n{equipment_display}\n\n## Basic Actions\n{basic_actions_display}"
                 actions_display = updated_state.format_actions_for_display()
 
                 has_actions = len(updated_state.actions) > 0
 
+                # Add header to actions display
+                if actions_display.strip():
+                    actions_display = f"## Action Dependencies\n{actions_display}"
+
                 yield (
                     combined_output,
-                    basic_actions_display,
                     actions_display,
                     updated_state,
                     gr.update(
@@ -278,12 +273,12 @@ def create_parser_tab(session_state, main_tabs):
                 msg.fail(f"Error retrying dependency parsing: {e}")
                 ingredients_display = state.format_ingredients_for_display()
                 equipment_display = state.format_equipment_for_display()
-                combined_output = f"## Ingredients\n{ingredients_display}\n\n## Equipment\n{equipment_display}"
+                basic_actions_display = state.format_basic_actions_for_display()
+                combined_output = f"## Ingredients\n{ingredients_display}\n\n## Equipment\n{equipment_display}\n\n## Basic Actions\n{basic_actions_display}"
 
                 yield (
                     combined_output,
-                    state.format_basic_actions_for_display(),
-                    f"Error retrying dependency parsing: {str(e)}",
+                    f"**Error retrying dependency parsing:** {str(e)}",
                     state,
                     gr.update(
                         value=get_button_text(state.parsing_state), interactive=True
@@ -311,11 +306,12 @@ def create_parser_tab(session_state, main_tabs):
             )
 
         def copy_sample_to_input(selected_recipe):
-            """Copy the selected sample recipe to the input textbox."""
+            """Copy the selected sample recipe to the input textbox and close accordion."""
             if not selected_recipe:
-                return ""
+                return "", gr.update()  # No change to accordion
 
-            return sample_recipes.get(selected_recipe, "")
+            recipe_text = sample_recipes.get(selected_recipe, "")
+            return recipe_text, gr.update(open=False)  # Close accordion after copy
 
         # Event handlers for sample recipe functionality
         sample_dropdown.change(
@@ -325,15 +321,16 @@ def create_parser_tab(session_state, main_tabs):
         )
 
         copy_button.click(
-            fn=copy_sample_to_input, inputs=[sample_dropdown], outputs=[recipe_input]
+            fn=copy_sample_to_input,
+            inputs=[sample_dropdown],
+            outputs=[recipe_input, samples_accordion],
         )
 
         parse_button.click(
             fn=combined_parse_function,
             inputs=[recipe_input, session_state],
             outputs=[
-                parsed_output,
-                basic_actions_output,
+                combined_results,
                 actions_output,
                 session_state,
                 parse_button,
@@ -418,7 +415,7 @@ def create_parser_tab(session_state, main_tabs):
                 msg.warn(f"Error generating JSON download: {e}")
                 return None
 
-    with gr.Tab(label="Visualization", id="visualization_tab") as visualization_tab:
+    with gr.Tab(label="Insights", id="visualization_tab") as visualization_tab:
         graph_plot = gr.Plot(label="Recipe Dependency Graph", value=None)
 
         with gr.Row():
@@ -449,8 +446,7 @@ def create_parser_tab(session_state, main_tabs):
 
         # Feedback components
 
-    with gr.Group():
-        gr.Markdown("### Feedback")
+    with gr.Accordion("Feedback", open=False, elem_id="feedback-accordion"):
         gr.Markdown(
             "_By submitting feedback, you agree to your prompt and parsed data will be stored for analysis._"
         )
@@ -493,21 +489,21 @@ def create_parser_tab(session_state, main_tabs):
         )
 
     helpful_btn.click(
-        fn=lambda state, parsed_output, basic_actions_output, actions_output: handle_feedback(
-            "helpful", state, parsed_output, basic_actions_output, actions_output
+        fn=lambda state, combined_output, actions_output: handle_feedback(
+            "helpful", state, combined_output, "", actions_output
         ),
-        inputs=[session_state, parsed_output, basic_actions_output, actions_output],
+        inputs=[session_state, combined_results, actions_output],
         outputs=[feedback_status],
     )
     not_helpful_btn.click(
-        fn=lambda state, parsed_output, basic_actions_output, actions_output: handle_feedback(
+        fn=lambda state, combined_output, actions_output: handle_feedback(
             "not_helpful",
             state,
-            parsed_output,
-            basic_actions_output,
+            combined_output,
+            "",
             actions_output,
         ),
-        inputs=[session_state, parsed_output, basic_actions_output, actions_output],
+        inputs=[session_state, combined_results, actions_output],
         outputs=[feedback_status],
     )
 
@@ -517,9 +513,24 @@ def create_parser_tab(session_state, main_tabs):
 
 def create_ui():
     """Create and configure the Gradio interface."""
-    with gr.Blocks(title="Recipe Insights - AI Recipe Analyzer") as demo:
+    with gr.Blocks(
+        title="Recipe Insights - AI Recipe Analyzer",
+        css="""
+        .gradio-container { scroll-behavior: smooth; }
+        .scroll-to-top { animation: scroll-top 0.3s ease-out; }
+        @keyframes scroll-top {
+            from { transform: translateY(10px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        #samples-accordion { --accordion-state: auto; }
+        #feedback-accordion { --accordion-state: auto; }
+        """,
+    ) as demo:
         # Create session state at the Blocks level
         session_state = gr.State(RecipeSessionState())
+
+        # Add scroll trigger for smooth top navigation
+        scroll_trigger = gr.HTML(visible=False)
 
         with gr.Tabs() as main_tabs:
             # Create how-to tab first for better UX
@@ -538,13 +549,17 @@ def create_ui():
                         value="",
                         placeholder="👈 Try selecting a sample recipe first, or paste your own recipe here!",
                     ),  # Update recipe input with helpful hint
-                    gr.update(open=True),  # Ensure samples accordion is open
+                    gr.update(),  # Don't force accordion state - let it be natural
+                    gr.update(
+                        value='<script>setTimeout(() => window.scrollTo({top: 0, behavior: "smooth"}), 100);</script>',
+                        visible=False,
+                    ),  # Trigger smooth scroll to top
                 )
 
             # Connect the Get Started button to the handler
             get_started_button.click(
                 fn=handle_get_started,
-                outputs=[main_tabs, recipe_input, samples_accordion],
+                outputs=[main_tabs, recipe_input, samples_accordion, scroll_trigger],
             )
 
     return demo
