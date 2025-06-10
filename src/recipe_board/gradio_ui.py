@@ -22,7 +22,7 @@ from recipe_board.ui.how_to_tab import create_how_to_tab
 def create_parser_tab(session_state, main_tabs):
     with gr.Tab(label="Parser", id="parser_tab"):
 
-        gr.Markdown("# Recipe Board")
+        gr.Markdown("# Recipe Insights")
         gr.Markdown(
             "Select a sample recipe or paste your own recipe text and click 'Parse Recipe' to analyze ingredients and equipment."
         )
@@ -517,7 +517,7 @@ def create_parser_tab(session_state, main_tabs):
 
 def create_ui():
     """Create and configure the Gradio interface."""
-    with gr.Blocks(title="Recipe Board - AI Recipe Analyzer") as demo:
+    with gr.Blocks(title="Recipe Insights - AI Recipe Analyzer") as demo:
         # Create session state at the Blocks level
         session_state = gr.State(RecipeSessionState())
 

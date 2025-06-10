@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### Package Management
 - Install dependencies: `uv sync`
-- Run application: `uv run recipe-board` or `uv run python -m recipe-board.main`
+- Run application: `uv run recipe-insights` or `uv run python src/main.py`
 - Install dev dependencies: `uv sync --group dev`
 
 ### Code Quality
@@ -24,8 +24,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This is an AI-powered recipe analysis tool that helps hobbyist chefs understand dependencies, resource requirements, and workflow optimization in recipes.
 
 ### Core Architecture
-- **Core Models** (`src/recipe-board/core/`): Pydantic data models for recipes, ingredients, equipment, and steps
-- **Agents** (`src/recipe-board/agents/`): AI-powered analysis components using smolagents framework
+- **Core Models** (`src/recipe_board/core/`): Pydantic data models for recipes, ingredients, equipment, and steps
+- **Agents** (`src/recipe_board/agents/`): AI-powered analysis components using smolagents framework
 - **NLP Pipeline**: Hybrid approach using spaCy for basic parsing + LLM calls for complex reasoning
 
 ### Key Components
