@@ -3,7 +3,6 @@ Tools for creating dependency graph visualizations from recipe data.
 """
 
 import plotly.graph_objects as go
-import plotly.express as px
 from typing import Dict, List, Tuple, Any
 import math
 from ..core.state import RecipeSessionState
