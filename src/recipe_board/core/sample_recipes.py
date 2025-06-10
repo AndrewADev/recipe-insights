@@ -91,7 +91,8 @@ def get_sample_recipe_choices(include_empty: bool = True) -> list:
         List of recipe titles suitable for dropdown choices.
     """
     recipes = load_sample_recipes()
-    choices = list(recipes.keys())
+    # Filter out empty or whitespace-only titles
+    choices = [title for title in recipes.keys() if title and title.strip()]
 
     if include_empty:
         choices = [""] + choices
