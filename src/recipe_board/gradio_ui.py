@@ -32,7 +32,8 @@ def create_parser_tab(session_state, main_tabs):
 
         # Load sample recipes
         sample_recipes = load_sample_recipes()
-        recipe_choices = get_sample_recipe_choices()
+        recipe_choices = get_sample_recipe_choices(include_empty=False)
+        recipe_choices = ["-- Select a recipe --"] + recipe_choices
 
         with gr.Row():
             with gr.Column(scale=1):
@@ -43,7 +44,7 @@ def create_parser_tab(session_state, main_tabs):
                     sample_dropdown = gr.Dropdown(
                         choices=recipe_choices,
                         label="Choose a sample recipe",
-                        value="",
+                        value="-- Select a recipe --",
                         interactive=True,
                     )
 
@@ -322,7 +323,7 @@ def create_parser_tab(session_state, main_tabs):
 
         def handle_sample_selection(selected_recipe):
             """Handle sample recipe dropdown selection."""
-            if not selected_recipe:
+            if not selected_recipe or selected_recipe == "-- Select a recipe --":
                 return (
                     gr.update(visible=False),  # Hide preview
                     "",  # Clear preview text
