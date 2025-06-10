@@ -49,4 +49,4 @@ Note that updates to `gradio` and `python` need to also be reflected in the Hugg
 
 ## Additional information
 
-The project source is [hosted on GitHub](https://github.com/AndrewADev/recipe-insights), with updates pushed to a [Hugging Face Space](https://huggingface.co/spaces/AndrewADev/recipe-insights).
+The project source is [hosted on GitHub](https://github.com/AndrewADev/recipe-insights), with updates pushed to a [Hugging Face Space](https://huggingface.co/spaces/Agents-MCP-Hackathon/recipe-insights).
