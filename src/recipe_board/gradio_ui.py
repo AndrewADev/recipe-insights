@@ -11,22 +11,54 @@ from recipe_board.agents.graph_tools import (
 from recipe_board.agents.entity_workflow import parse_recipe
 from recipe_board.core.state import RecipeSessionState, ParsingState
 
+from recipe_board.core.sample_recipes import (
+    load_sample_recipes,
+    create_recipe_preview,
+    get_sample_recipe_choices,
+)
+
 
 def create_parser_tab(session_state):
     with gr.Tab(label="Parser"):
 
         gr.Markdown("# Recipe Board")
         gr.Markdown(
-            "Paste your recipe text on the left and click 'Parse Recipe' to analyze ingredients and equipment."
+            "Select a sample recipe or paste your own recipe text and click 'Parse Recipe' to analyze ingredients and equipment."
         )
+
+        # Load sample recipes
+        sample_recipes = load_sample_recipes()
+        recipe_choices = get_sample_recipe_choices()
 
         with gr.Row():
             with gr.Column(scale=1):
+                # Sample recipe dropdown and preview
+                with gr.Accordion("Sample Recipes", open=True) as samples_accordion:
+                    sample_dropdown = gr.Dropdown(
+                        choices=recipe_choices,
+                        label="Choose a sample recipe",
+                        value="",
+                        interactive=True,
+                    )
+
+                    with gr.Row():
+                        copy_button = gr.Button(
+                            "Copy to Input", size="sm", visible=False
+                        )
+
+                    recipe_preview = gr.Textbox(
+                        label="Preview",
+                        lines=6,
+                        max_lines=8,
+                        interactive=False,
+                        visible=False,
+                    )
+
                 recipe_input = gr.Textbox(
                     label="Recipe Text",
-                    placeholder="Paste your recipe here...\n\nExample:\n## Ingredients\n- 2 cups flour\n- 1 large onion, diced\n- 500g ground beef...",
-                    lines=20,
-                    max_lines=30,
+                    placeholder="Paste your recipe here or select from samples above...\n\nExample:\n## Ingredients\n- 2 cups flour\n- 1 large onion, diced\n- 500g ground beef...",
+                    lines=15,
+                    max_lines=25,
                 )
 
                 parse_button = gr.Button("Parse Recipe", variant="primary", size="lg")
@@ -257,6 +289,43 @@ def create_parser_tab(session_state):
                     ),
                     gr.update(interactive=False),
                 )
+
+        def handle_sample_selection(selected_recipe):
+            """Handle sample recipe dropdown selection."""
+            if not selected_recipe:
+                return (
+                    gr.update(visible=False),  # Hide preview
+                    "",  # Clear preview text
+                    gr.update(visible=False),  # Hide copy button
+                )
+
+            # Get the full recipe text
+            recipe_text = sample_recipes.get(selected_recipe, "")
+            preview_text = create_recipe_preview(recipe_text)
+
+            return (
+                gr.update(visible=True),  # Show preview
+                preview_text,  # Set preview text
+                gr.update(visible=True),  # Show copy button
+            )
+
+        def copy_sample_to_input(selected_recipe):
+            """Copy the selected sample recipe to the input textbox."""
+            if not selected_recipe:
+                return ""
+
+            return sample_recipes.get(selected_recipe, "")
+
+        # Event handlers for sample recipe functionality
+        sample_dropdown.change(
+            fn=handle_sample_selection,
+            inputs=[sample_dropdown],
+            outputs=[recipe_preview, recipe_preview, copy_button],
+        )
+
+        copy_button.click(
+            fn=copy_sample_to_input, inputs=[sample_dropdown], outputs=[recipe_input]
+        )
 
         parse_button.click(
             fn=combined_parse_function,
