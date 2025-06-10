@@ -8,6 +8,9 @@ sdk_version: 5.33.1
 app_file: src/main.py
 pinned: false
 python_version: 3.13
+tags:
+  - agent-demo-track
+license: apache-2.0
 ---
 # Recipe Insights
 
