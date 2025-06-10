@@ -2,7 +2,6 @@
 Unit tests for graph visualization tools.
 """
 
-import pytest
 import plotly.graph_objects as go
 from recipe_board.agents.graph_tools import (
     create_dependency_graph,

@@ -1,14 +1,14 @@
 import gradio as gr
 from wasabi import msg
 
-from recipe_board.agents.models import (
-    parse_recipe,
+from recipe_board.agents.parsing_agent import (
     parse_dependencies,
 )
 from recipe_board.agents.graph_tools import (
     create_dependency_graph,
     generate_graph_download_data,
 )
+from recipe_board.agents.entity_workflow import parse_recipe
 from recipe_board.core.state import RecipeSessionState, ParsingState
 
 
