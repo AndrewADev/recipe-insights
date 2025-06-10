@@ -20,7 +20,7 @@ def gradio_app():
     app.launch(
         server_port=test_port,
         share=False,
-        quiet=True,
+        debug=True,
         prevent_thread_lock=True  # Returns immediately, doesn't block
     )
 
