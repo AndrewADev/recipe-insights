@@ -1,5 +1,5 @@
 [project]
-name = "recipe-board"
+name = "recipe-insights"
 version = "0.1.0"
 description = "Help hobbyist chefs discover and better understand the implicit dependencies in recipes they’d like to cook or bake"
 readme = "README.md"
@@ -18,7 +18,7 @@ dependencies = [
 ]
 
 [project.scripts]
-recipe-board = "main:main"
+recipe-insights = "main:main"
 
 [dependency-groups]
 dev = [

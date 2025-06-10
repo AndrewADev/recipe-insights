@@ -5,12 +5,12 @@ load_dotenv()
 
 
 def main():
-    """Launch the Recipe Board Gradio UI."""
+    """Launch the Recipe Insights Gradio UI."""
     from recipe_board.gradio_ui import launch_ui
 
     # with open("./data/claudes-lasagne.md", 'r', encoding='utf-8') as file:
     #     parse_steps(file.read())
-    msg.info("Starting Recipe Board UI...")
+    msg.info("Starting Recipe Insights UI...")
     launch_ui()
 
 

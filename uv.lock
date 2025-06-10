@@ -970,7 +970,7 @@ wheels = [
 ]
 
 [[package]]
-name = "recipe-board"
+name = "recipe-insights"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [

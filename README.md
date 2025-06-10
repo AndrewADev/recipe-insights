@@ -1,5 +1,5 @@
 ---
-title: Recipe Board
+title: Recipe Insights
 emoji: 📉
 colorFrom: yellow
 colorTo: purple
@@ -9,7 +9,7 @@ app_file: src/main.py
 pinned: false
 python_version: 3.13
 ---
-# RecipeBoard
+# Recipe Insights
 
 A tool to help hobbyist chefs discover and better understand the implicit dependencies in recipes they’d like to cook or bake.
 

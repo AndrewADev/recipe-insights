@@ -6,13 +6,13 @@ def create_how_to_tab():
     with gr.Tab(label="How To") as how_to_tab:
         gr.Markdown(
             """
-# 🍳 Welcome to Recipe Board!
+# 🍳 Welcome to Recipe Insights!
 
-## What is Recipe Board? 🤖
+## What is Recipe Insights? 🤖
 
-Recipe Board is an AI-powered recipe analysis tool that helps you understand the **dependencies** and **relationships** within your recipes! 🔍
+Recipe Insights is an AI-powered recipe analysis tool that helps you understand the **dependencies** and **relationships** within your recipes! 🔍
 
-Using advanced natural language processing and machine learning, Recipe Board can:
+Using advanced natural language processing and machine learning, Recipe Insights can:
 - 📝 **Parse ingredients** with amounts, units, and modifiers
 - 🔧 **Identify equipment** and tools needed
 - ⚡ **Extract cooking actions** and their dependencies
@@ -21,7 +21,7 @@ Using advanced natural language processing and machine learning, Recipe Board ca
 
 Perfect for home cooks who want to better understand their recipes! 👨‍🍳👩‍🍳
 
-## How to Use Recipe Board 📋
+## How to Use Recipe Insights 📋
 
 ### Step 1: Choose Your Recipe 📖
 - **Try a sample**: Select "Claude's Lasagne" from the dropdown to see the tool in action
@@ -56,7 +56,7 @@ From the visualization tab, you can:
 - **Download as JSON**: Raw data for further analysis
 
 ## Give Us Feedback! 💭
-Help us improve Recipe Board by using the feedback buttons:
+Help us improve Recipe Insights by using the feedback buttons:
 - 👍 **Helpful**: When the analysis works well for your recipe
 - 👎 **Not Helpful**: When something doesn't look right
 
