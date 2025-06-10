@@ -20,6 +20,9 @@ from recipe_board.ui.how_to_tab import create_how_to_tab
 
 
 def create_parser_tab(session_state, main_tabs):
+    # First declare insights_tab_button as None - will be created later
+    insights_tab_button = None
+
     with gr.Tab(label="Recipe", id="parser_tab"):
 
         gr.Markdown("# Recipe Insights")
@@ -100,6 +103,12 @@ def create_parser_tab(session_state, main_tabs):
             else:
                 return "Parse Recipe"
 
+        def get_insights_button_state(state):
+            """Get insights button enabled state based on current state."""
+            return (
+                state.parsing_state == ParsingState.COMPLETED and len(state.actions) > 0
+            )
+
         def combined_parse_function(recipe_text, state):
             """Combined parsing function that handles recipe parsing and auto-triggers dependency parsing."""
 
@@ -123,6 +132,9 @@ def create_parser_tab(session_state, main_tabs):
                     state,
                     gr.update(value="Parsing...", interactive=False),
                     gr.update(interactive=False),
+                    gr.update(
+                        interactive=False
+                    ),  # Insights tab button disabled during parsing
                 )
 
                 # Parse using state-based function
@@ -153,6 +165,7 @@ def create_parser_tab(session_state, main_tabs):
                             interactive=True,
                         ),
                         gr.update(interactive=False),  # Keep visualize disabled
+                        gr.update(interactive=False),  # Keep insights button disabled
                     )
                     return
 
@@ -164,6 +177,9 @@ def create_parser_tab(session_state, main_tabs):
                     updated_state,
                     gr.update(value="Parsing Dependencies...", interactive=False),
                     gr.update(interactive=False),
+                    gr.update(
+                        interactive=False
+                    ),  # Insights button disabled during dependency parsing
                 )
 
                 try:
@@ -188,6 +204,9 @@ def create_parser_tab(session_state, main_tabs):
                             interactive=True,
                         ),
                         gr.update(interactive=has_actions),
+                        gr.update(
+                            interactive=get_insights_button_state(final_state)
+                        ),  # Use helper function
                     )
 
                 except Exception as dep_error:
@@ -204,6 +223,9 @@ def create_parser_tab(session_state, main_tabs):
                             interactive=True,
                         ),
                         gr.update(interactive=False),
+                        gr.update(
+                            interactive=False
+                        ),  # Insights button disabled on dependency error
                     )
 
             except Exception as e:
@@ -219,6 +241,9 @@ def create_parser_tab(session_state, main_tabs):
                         value=get_button_text(state.parsing_state), interactive=True
                     ),
                     gr.update(interactive=False),
+                    gr.update(
+                        interactive=False
+                    ),  # Insights button disabled on recipe parsing error
                 )
 
         def retry_dependency_parsing(state):
@@ -238,6 +263,9 @@ def create_parser_tab(session_state, main_tabs):
                     state,
                     gr.update(value="Parsing Dependencies...", interactive=False),
                     gr.update(interactive=False),
+                    gr.update(
+                        interactive=False
+                    ),  # Insights button disabled during retry
                 )
 
                 # Parse dependencies
@@ -266,6 +294,9 @@ def create_parser_tab(session_state, main_tabs):
                         interactive=True,
                     ),
                     gr.update(interactive=has_actions),
+                    gr.update(
+                        interactive=get_insights_button_state(updated_state)
+                    ),  # Use helper function
                 )
 
             except Exception as e:
@@ -284,6 +315,9 @@ def create_parser_tab(session_state, main_tabs):
                         value=get_button_text(state.parsing_state), interactive=True
                     ),
                     gr.update(interactive=False),
+                    gr.update(
+                        interactive=False
+                    ),  # Insights button disabled on retry error
                 )
 
         def handle_sample_selection(selected_recipe):
@@ -326,17 +360,14 @@ def create_parser_tab(session_state, main_tabs):
             outputs=[recipe_input, samples_accordion],
         )
 
-        parse_button.click(
-            fn=combined_parse_function,
-            inputs=[recipe_input, session_state],
-            outputs=[
-                combined_results,
-                actions_output,
-                session_state,
-                parse_button,
-                visualize_button,
-            ],
-        )
+        # Store reference for later event binding
+        parse_outputs = [
+            combined_results,
+            actions_output,
+            session_state,
+            parse_button,
+            visualize_button,
+        ]
 
         def create_dependency_visualization(state):
             """Create and display dependency graph."""
@@ -416,7 +447,30 @@ def create_parser_tab(session_state, main_tabs):
                 return None
 
     with gr.Tab(label="Insights", id="visualization_tab") as visualization_tab:
+        gr.Markdown("## 🕸️ Recipe Dependency Graph")
         graph_plot = gr.Plot(label="Recipe Dependency Graph", value=None)
+
+        # Get Insights button for direct access from this tab
+        with gr.Row():
+            with gr.Column(scale=1):
+                pass  # Empty column for centering
+            with gr.Column(scale=2):
+                insights_tab_button = gr.Button(
+                    "Get Insights",
+                    variant="primary",
+                    size="lg",
+                    interactive=False,
+                )
+            with gr.Column(scale=1):
+                pass  # Empty column for centering
+
+        # Now that insights_tab_button is created, wire up the parse button
+        parse_outputs.append(insights_tab_button)
+        parse_button.click(
+            fn=combined_parse_function,
+            inputs=[recipe_input, session_state],
+            outputs=parse_outputs,
+        )
 
         with gr.Row():
             download_html_btn = gr.DownloadButton(
@@ -427,6 +481,13 @@ def create_parser_tab(session_state, main_tabs):
             )
 
         visualize_button.click(
+            fn=create_dependency_visualization,
+            inputs=[session_state],
+            outputs=[graph_plot, download_html_btn, download_json_btn, main_tabs],
+        )
+
+        # Wire up the Insights tab button to the same function
+        insights_tab_button.click(
             fn=create_dependency_visualization,
             inputs=[session_state],
             outputs=[graph_plot, download_html_btn, download_json_btn, main_tabs],
@@ -507,8 +568,8 @@ def create_parser_tab(session_state, main_tabs):
         outputs=[feedback_status],
     )
 
-    # Return key components for the Get Started button
-    return sample_dropdown, recipe_input, samples_accordion
+    # Return key components for the Get Started button and insights button
+    return sample_dropdown, recipe_input, samples_accordion, insights_tab_button
 
 
 def create_ui():
@@ -536,8 +597,8 @@ def create_ui():
             # Create how-to tab first for better UX
             get_started_button = create_how_to_tab()
             # Create parser tab and get component references
-            sample_dropdown, recipe_input, samples_accordion = create_parser_tab(
-                session_state, main_tabs
+            sample_dropdown, recipe_input, samples_accordion, insights_tab_button = (
+                create_parser_tab(session_state, main_tabs)
             )
 
             # Set up Get Started button functionality after both tabs are created
