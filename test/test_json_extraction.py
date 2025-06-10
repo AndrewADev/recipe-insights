@@ -1,8 +1,7 @@
 """Unit tests for JSON extraction and cleaning logic."""
 
-import pytest
 import json
-from recipe_board.agents.models import _extract_json_from_response
+from recipe_board.agents.entity_workflow import _extract_json_from_response
 
 
 class TestJSONExtraction:

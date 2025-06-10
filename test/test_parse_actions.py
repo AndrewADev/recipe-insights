@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Debug test for parse_dependencies function using monkeypatch approach."""
 
-from recipe_board.agents.models import parse_dependencies
+from recipe_board.agents.parsing_agent import parse_dependencies
 from recipe_board.core.state import ParsingState, RecipeSessionState
 from recipe_board.core.recipe import Ingredient, Equipment, BasicAction
 
@@ -29,7 +29,7 @@ def test_parse_dependencies_success(monkeypatch):
         return mock_response
 
     # Mock the CodeAgent.run method
-    monkeypatch.setattr("recipe_board.agents.models.CodeAgent.run", mock_agent_run)
+    monkeypatch.setattr("recipe_board.agents.parsing_agent.CodeAgent.run", mock_agent_run)
 
     # Create test state with ingredients and equipment
     state = RecipeSessionState()

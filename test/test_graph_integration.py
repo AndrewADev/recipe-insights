@@ -2,7 +2,6 @@
 Integration test for end-to-end graph visualization workflow.
 """
 
-import pytest
 from recipe_board.core.state import RecipeSessionState, ParsingState
 from recipe_board.core.recipe import Ingredient, Equipment, Action
 from recipe_board.agents.graph_tools import create_dependency_graph
