@@ -54,7 +54,7 @@ https://github.com/user-attachments/assets/4de8d2c2-f990-4c51-9522-781b4bf948fa
 
 ## Development
 
-Internally, the project uses `uv`. So setting up looks like:
+Internally, the project uses `uv`. So setting it up looks like:
 
 ```shell
 # Install dependencies
@@ -68,6 +68,27 @@ Set up pre-commit with:
 ```shell
 uv run pre-commit
 ```
+
+Lastly, you will need to the provide at least the following variables in the `.env` file (you must create the file):
+
+```
+# API Token with permissions for inference on Hugging Face
+HF_TOKEN=<your token here>
+# Name of model on Hugging Face
+HF_MODEL=<model name here>
+```
+
+### Supported models
+
+The app was developed with `Qwen/Qwen2.5-Coder-32B-Instruct`.
+
+Qwen instruct family models continue to deliver reliable results (newer ones tested to work as well, e.g. `Qwen/Qwen3-30B-A3B-Instruct-2507`).
+
+We've also had (initial) promising results with the GPT-OSS family (though sometimes 20B seems to time out/return empty results, so you may need to try a few times).
+
+#### Identifying other models
+
+The app is using the `chat.completion` call for inference, so you might start by looking at the models tagged "conversational": https://huggingface.co/models?other=conversational
 
 ### Updating `requirements.txt` (after dependency updates)
 
