@@ -1,13 +1,42 @@
+import pytest
+from unittest.mock import MagicMock
 from recipe_board.agents.parsing_agent import parse_dependencies
 from recipe_board.agents.entity_workflow import parse_recipe
 from recipe_board.core.state import RecipeSessionState, ParsingState
 from recipe_board.core.recipe import Ingredient, Equipment, BasicAction
 from smolagents.agent_types import AgentText
 
+
+@pytest.fixture
+def mock_llm_response(monkeypatch):
+    """Fixture to mock InferenceClient for parse_recipe tests.
+
+    Returns a callable that accepts the mock response content and sets up the mock.
+    """
+    def _mock_response(content: str):
+        mock_choice = MagicMock()
+        mock_choice.message.content = content
+        mock_chat_response = MagicMock()
+        mock_chat_response.choices = [mock_choice]
+
+        mock_client = MagicMock()
+        mock_client.chat.completions.create.return_value = mock_chat_response
+
+        def mock_inference_client(*args, **kwargs):
+            return mock_client
+
+        monkeypatch.setattr(
+            "recipe_board.agents.entity_workflow.InferenceClient",
+            mock_inference_client
+        )
+
+    return _mock_response
+
+
 class TestParseRecipeEquipment:
     """Test suite for parse_recipe function (new state-based API)."""
 
-    def test_parse_recipe_with_markdown_code_blocks(self, monkeypatch):
+    def test_parse_recipe_with_markdown_code_blocks(self, mock_llm_response):
         """Test that markdown code blocks are properly stripped from response."""
         mock_response = """```json
 {
@@ -24,14 +53,7 @@ class TestParseRecipeEquipment:
 }
 ```"""
 
-        def mock_text_generation(*args, **kwargs):
-            return mock_response
-
-        monkeypatch.setattr(
-            "recipe_board.agents.entity_workflow.InferenceClient.text_generation",
-            mock_text_generation
-        )
-
+        mock_llm_response(mock_response)
         result = parse_recipe("test recipe")
 
         # Verify result is RecipeSessionState
@@ -56,18 +78,11 @@ class TestParseRecipeEquipment:
         assert result.equipment[0].required == True
         assert result.equipment[1].name == "mixing bowl"
 
-    def test_parse_recipe_clean_json(self, monkeypatch):
+    def test_parse_recipe_clean_json(self, mock_llm_response):
         """Test parsing when response is already clean JSON."""
         mock_response = '{"equipment": [], "ingredients": [], "basic_actions": []}'
 
-        def mock_text_generation(*args, **kwargs):
-            return mock_response
-
-        monkeypatch.setattr(
-            "recipe_board.agents.entity_workflow.InferenceClient.text_generation",
-            mock_text_generation
-        )
-
+        mock_llm_response(mock_response)
         result = parse_recipe("test recipe")
 
         # Verify empty state
@@ -77,18 +92,11 @@ class TestParseRecipeEquipment:
         assert len(result.basic_actions) == 0
         assert result.parsing_state == ParsingState.COMPLETED
 
-    def test_parse_recipe_invalid_json(self, monkeypatch):
+    def test_parse_recipe_invalid_json(self, mock_llm_response):
         """Test handling of invalid JSON response."""
         mock_response = "This is not valid JSON at all!"
 
-        def mock_text_generation(*args, **kwargs):
-            return mock_response
-
-        monkeypatch.setattr(
-            "recipe_board.agents.entity_workflow.InferenceClient.text_generation",
-            mock_text_generation
-        )
-
+        mock_llm_response(mock_response)
         result = parse_recipe("test recipe")
 
         # Should return empty state when JSON parsing fails
@@ -97,16 +105,9 @@ class TestParseRecipeEquipment:
         assert len(result.equipment) == 0
         assert result.raw_text == "test recipe"
 
-    def test_parse_recipe_empty_response(self, monkeypatch):
+    def test_parse_recipe_empty_response(self, mock_llm_response):
         """Test handling of empty response."""
-        def mock_text_generation(*args, **kwargs):
-            return ""
-
-        monkeypatch.setattr(
-            "recipe_board.agents.entity_workflow.InferenceClient.text_generation",
-            mock_text_generation
-        )
-
+        mock_llm_response("")
         result = parse_recipe("test recipe")
 
         # Should return empty state
@@ -114,16 +115,9 @@ class TestParseRecipeEquipment:
         assert len(result.ingredients) == 0
         assert len(result.equipment) == 0
 
-    def test_parse_recipe_none_response(self, monkeypatch):
+    def test_parse_recipe_none_response(self, mock_llm_response):
         """Test handling of None response."""
-        def mock_text_generation(*args, **kwargs):
-            return None
-
-        monkeypatch.setattr(
-            "recipe_board.agents.entity_workflow.InferenceClient.text_generation",
-            mock_text_generation
-        )
-
+        mock_llm_response(None)
         result = parse_recipe("test recipe")
 
         # Should return empty state

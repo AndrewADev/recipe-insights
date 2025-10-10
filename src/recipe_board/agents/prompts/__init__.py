@@ -62,32 +62,34 @@ parse_equipment_prompt = f"""
 
 Now, you will assist one such chef by parsing the equipment, ingredients, and cooking actions from the recipe.
 
-Return ONLY valid JSON with this exact structure. Do not include any other text, explanations, or markdown:
+You must respond with ONLY a valid JSON object. No explanations, no markdown formatting, just the raw JSON.
 
+Required JSON structure:
 {{
   "equipment": [
     {{"name": "Stand mixer", "required": true, "modifiers": "dough hook attachment"}},
     {{"name": "Large mixing bowl", "required": true, "modifiers": null}}
   ],
   "ingredients": [
-    {{"name": "flour", "amount": 3, "unit": "cup", "modifiers": "all-purpose"}},
-    {{"name": "salt", "amount": 1, "unit": "tsp", "modifiers": null}},
-    {{"name": "olive oil", "amount": 0.5, "unit": "cup", "modifiers": null}}
+    {{"name": "flour", "amount": 3, "unit": "cup", "modifiers": ["all-purpose"]}},
+    {{"name": "salt", "amount": 1, "unit": "tsp", "modifiers": []}},
+    {{"name": "olive oil", "amount": 0.5, "unit": "cup", "modifiers": []}}
   ],
   "basic_actions": [
-    {{"verb": "mix", "sentence": "In large mixing bowl, combine 3 cups flour, 1 tsp salt, 1 packet yeast, and 1 cup warm water.", "sentence_index": 0}},
-    {{"verb": "combine", "sentence": "In large mixing bowl, combine 3 cups flour, 1 tsp salt, 1 packet yeast, and 1 cup warm water.", "sentence_index": 0}}
+    {{"verb": "mix", "sentence": "In large mixing bowl, combine 3 cups flour.", "sentence_index": 0}},
+    {{"verb": "combine", "sentence": "In large mixing bowl, combine 3 cups flour.", "sentence_index": 0}}
   ]
 }}
 
-IMPORTANT:
-* Return ONLY the JSON object above
-* Do not include markdown code blocks, explanations, or any other text
-* All string values must be properly quoted
-* Use null for empty modifiers, not empty strings
-* For amounts, use decimal numbers (e.g., 0.5, 0.25, 0.33) NOT fractions (e.g., 1/2, 1/4, 1/3)
-* For basic_actions, extract cooking verbs (mix, combine, bake, etc.) with their full sentence context
-* sentence_index starts at 0 for the first sentence
+CRITICAL RULES:
+1. Output ONLY the JSON object - no markdown code blocks like ```json
+2. All string values must use double quotes, not single quotes
+3. modifiers must be an array of strings, use [] for no modifiers
+4. For amounts, use numbers (0.5, 0.25) NOT fractions or strings
+5. sentence_index is a number starting at 0
+6. Every object field must be present - use null or [] if empty
+7. Do not add trailing commas after the last item in arrays or objects
+8. Escape any special characters in strings (quotes, backslashes, newlines)
 
 Recipe to parse:
 """

@@ -1,3 +1,4 @@
+from huggingface_hub import InferenceClient
 from recipe_board.agents.parsing_agent import model
 from recipe_board.agents.prompts import parse_equipment_prompt
 from recipe_board.core.logging_utils import safe_log_user_data
@@ -5,7 +6,6 @@ from recipe_board.core.recipe import BasicAction, Equipment, Ingredient
 from recipe_board.core.state import ParsingState, RecipeSessionState
 
 
-from huggingface_hub import InferenceClient
 from wasabi import msg
 
 
@@ -183,19 +183,47 @@ def parse_recipe(recipe: str) -> RecipeSessionState:
     state.parsing_state = ParsingState.PARSING_RECIPE
 
     try:
+        provider_value = os.environ.get("HF_PROVIDER", "auto")
+
         hf_client = InferenceClient(
-            provider="hf-inference",
+            # Cannot find exports for clean validation, so
+            # pass-thru for now (could consider querying the Hub via SDK)
+            provider=provider_value,  # type: ignore
             api_key=os.environ["HF_TOKEN"],
         )
     except Exception as e:
-        # TODO: retries?
-        msg.fail(f"error creating client: {e}")
+        import traceback
+
+        msg.fail(f"Error creating InferenceClient: {e}")
+        msg.fail(f"Full traceback:\n{traceback.format_exc()}")
+        state.parsing_state = ParsingState.ERROR
         return state
 
-    result = hf_client.text_generation(parse_equipment_prompt + recipe, model=model)
+    # Use chat_completion for better provider compatibility
+    try:
+        response = hf_client.chat.completions.create(
+            model=model,
+            messages=[{"role": "user", "content": parse_equipment_prompt + recipe}],
+            max_tokens=4096,  # Generous limit for complex recipes with many ingredients/equipment/actions
+            temperature=0.1,  # Lower temperature for more consistent, deterministic JSON output
+        )
+    except Exception as api_error:
+        import traceback
+
+        msg.fail(f"Error calling chat completion API: {api_error}")
+        msg.fail(f"Model: {model}, Provider: {provider_value}")
+        msg.fail(f"Full traceback:\n{traceback.format_exc()}")
+        state.parsing_state = ParsingState.ERROR
+        return state
+
+    if not response or not response.choices:
+        msg.warn("No result returned from LLM!")
+        return state
+
+    result = response.choices[0].message.content
 
     if result is None or result == "":
-        msg.warn("No result returned from LLM!")
+        msg.warn("Empty result returned from LLM!")
         return state
 
     # Log the raw response for debugging (truncated if very long)
