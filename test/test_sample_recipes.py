@@ -1,8 +1,6 @@
 """
 Tests for sample recipe utilities.
 """
-
-import pytest
 import tempfile
 import os
 from unittest.mock import patch, mock_open

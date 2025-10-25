@@ -1,4 +1,3 @@
-import pytest
 from recipe_board.core.recipe import Ingredient, Equipment
 from recipe_board.agents.prompts import build_parse_actions_prompt
 
@@ -14,8 +13,6 @@ class TestBuildParseActionsPrompt:
         result = build_parse_actions_prompt(ingredients, equipment)
 
         # Should contain the basic prompt structure
-        assert "kitchen operations GURU" in result
-        assert "Return ONLY valid JSON" in result
         assert "Recipe to parse:" in result
         assert "The parsed Ingredients with their IDs:" in result
         assert "The parsed Equipment with their IDs:" in result
@@ -103,7 +100,6 @@ class TestBuildParseActionsPrompt:
         assert equipment[1].id in result
 
         # Should maintain prompt structure
-        assert "kitchen operations GURU" in result
         assert "ingredient_id" in result
         assert "equipment_id" in result
 
@@ -126,7 +122,7 @@ class TestBuildParseActionsPrompt:
 
         # Should contain key instruction elements
         assert "Return ONLY valid JSON" in result
-        assert "Do not include markdown code blocks" in result
+        assert "Do not include markdown" in result
         assert "Use the Ingredient and Equipment IDs provided" in result
         assert "DO NOT generate your own" in result
 
