@@ -18,7 +18,7 @@ class TestRecipeSessionState:
     def test_has_parsed_data_empty(self):
         """Test has_parsed_data returns False when no data is present."""
         state = RecipeSessionState()
-        assert state.has_parsed_data() == False
+        assert not state.has_parsed_data()
 
     def test_has_parsed_data_ingredients_only(self):
         """Test has_parsed_data returns False when only ingredients are present."""
@@ -26,7 +26,7 @@ class TestRecipeSessionState:
         state.ingredients = [
             Ingredient(name="flour", amount=2.0, unit="cups", modifiers=[], raw_text="2 cups flour")
         ]
-        assert state.has_parsed_data() == False
+        assert not state.has_parsed_data()
 
     def test_has_parsed_data_equipment_only(self):
         """Test has_parsed_data returns False when only equipment is present."""
@@ -34,7 +34,7 @@ class TestRecipeSessionState:
         state.equipment = [
             Equipment(name="mixing bowl", required=True, modifiers=None)
         ]
-        assert state.has_parsed_data() == False
+        assert not state.has_parsed_data()
 
     def test_has_parsed_data_both_present(self):
         """Test has_parsed_data returns True when both ingredients and equipment are present."""

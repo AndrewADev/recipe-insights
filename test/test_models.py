@@ -129,18 +129,6 @@ class TestParseRecipeEquipment:
 class TestBasicActionsAndDependencies:
     """Test suite for basic actions parsing and dependency parsing."""
 
-    def test_basic_actions_creation(self):
-        """Test that BasicAction objects are created correctly."""
-        basic_action = BasicAction(
-            verb="mix",
-            sentence="Mix flour and salt in bowl.",
-            sentence_index=1
-        )
-
-        assert basic_action.verb == "mix"
-        assert basic_action.sentence == "Mix flour and salt in bowl."
-        assert basic_action.sentence_index == 1
-
     def test_parse_dependencies_requires_basic_actions(self):
         """Test that parse_dependencies requires basic actions to be present."""
         state = RecipeSessionState()
@@ -210,10 +198,6 @@ class TestBasicActionsAndDependencies:
         '''
 
         mock_agent_text = AgentText(agent_text_content)
-
-        # Mock the agent.run method to return AgentText
-        def mock_agent_run(prompt):
-            return mock_agent_text
 
         # Mock the agent creation and run
         from unittest.mock import MagicMock

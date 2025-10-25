@@ -38,47 +38,17 @@ class TestCreateDependencyGraph:
         assert len(fig.layout.annotations) > 0
         assert "No actions found" in fig.layout.annotations[0].text
 
-    def test_with_actions_creates_network_graph(self):
+    def test_with_actions_creates_network_graph(self, multi_ingredient_state):
         """Test that valid state with actions creates proper network graph."""
-        state = RecipeSessionState()
-
-        # Create ingredients with specific IDs for testing
-        ingredient1 = Ingredient(name="flour", amount=2.0, unit="cups", modifiers=[], raw_text="2 cups flour")
-        ingredient2 = Ingredient(name="salt", amount=1.0, unit="tsp", modifiers=[], raw_text="1 tsp salt")
-        state.ingredients = [ingredient1, ingredient2]
-
-        # Create equipment with specific ID
-        equipment1 = Equipment(name="mixing bowl", required=True, modifiers="large")
-        state.equipment = [equipment1]
-
-        # Create action linking ingredients to equipment
-        action1 = Action(
-            name="mix",
-            ingredient_ids=[ingredient1.id, ingredient2.id],
-            equipment_id=equipment1.id
-        )
-        state.actions = [action1]
-
-        fig = create_dependency_graph(state)
+        fig = create_dependency_graph(multi_ingredient_state)
 
         assert isinstance(fig, go.Figure)
         assert len(fig.data) > 0  # Should have traces for nodes and edges
         assert fig.layout.title.text == "Recipe Dependency Graph"
 
-    def test_graph_has_proper_traces(self):
+    def test_graph_has_proper_traces(self, basic_recipe_state):
         """Test that graph contains expected node and edge traces."""
-        state = RecipeSessionState()
-
-        ingredient1 = Ingredient(name="flour", amount=2.0, unit="cups", modifiers=[], raw_text="2 cups flour")
-        state.ingredients = [ingredient1]
-
-        equipment1 = Equipment(name="bowl", required=True, modifiers=None)
-        state.equipment = [equipment1]
-
-        action1 = Action(name="mix", ingredient_ids=[ingredient1.id], equipment_id=equipment1.id)
-        state.actions = [action1]
-
-        fig = create_dependency_graph(state)
+        fig = create_dependency_graph(basic_recipe_state)
 
         # Should have edge trace plus node traces (ingredients, actions, equipment)
         assert len(fig.data) >= 2  # At least edges + some node traces
@@ -105,53 +75,45 @@ class TestBuildGraphData:
         assert nodes == []
         assert edges == []
 
-    def test_ingredients_become_nodes(self):
+    def test_ingredients_become_nodes(self, basic_ingredient):
         """Test that ingredients are converted to nodes properly."""
         state = RecipeSessionState()
-        ingredient = Ingredient(name="flour", amount=2.0, unit="cups", modifiers=["all-purpose"], raw_text="2 cups flour")
-        state.ingredients = [ingredient]
+        state.ingredients = [basic_ingredient]
         colors = _get_theme_colors(False)
 
         nodes, edges = _build_graph_data(state, colors)
 
         assert len(nodes) == 1
         node = nodes[0]
-        assert node['id'] == ingredient.id
+        assert node['id'] == basic_ingredient.id
         assert node['name'] == "flour"
         assert node['type'] == 'ingredient'
         assert node['color'] == colors['ingredients']
         assert "flour" in node['hover_text']
 
-    def test_equipment_becomes_nodes(self):
+    def test_equipment_becomes_nodes(self, basic_equipment):
         """Test that equipment is converted to nodes properly."""
         state = RecipeSessionState()
-        equipment = Equipment(name="bowl", required=True, modifiers="large")
-        state.equipment = [equipment]
+        state.equipment = [basic_equipment]
         colors = _get_theme_colors(False)
 
-        nodes, edges = _build_graph_data(state, colors)
+        nodes, _ = _build_graph_data(state, colors)
 
         assert len(nodes) == 1
         node = nodes[0]
-        assert node['id'] == equipment.id
+        assert node['id'] == basic_equipment.id
         assert node['name'] == "bowl"
         assert node['type'] == 'equipment'
         assert node['color'] == colors['equipment']
 
-    def test_actions_create_nodes_and_edges(self):
+    def test_actions_create_nodes_and_edges(self, basic_recipe_state):
         """Test that actions create action nodes and connecting edges."""
-        state = RecipeSessionState()
-
-        ingredient = Ingredient(name="flour", amount=2.0, unit="cups", modifiers=[], raw_text="2 cups flour")
-        equipment = Equipment(name="bowl", required=True, modifiers=None)
-        action = Action(name="mix", ingredient_ids=[ingredient.id], equipment_id=equipment.id)
-
-        state.ingredients = [ingredient]
-        state.equipment = [equipment]
-        state.actions = [action]
         colors = _get_theme_colors(False)
 
-        nodes, edges = _build_graph_data(state, colors)
+        nodes, edges = _build_graph_data(basic_recipe_state, colors)
+
+        ingredient = basic_recipe_state.ingredients[0]
+        equipment = basic_recipe_state.equipment[0]
 
         # Should have 3 nodes: ingredient, equipment, action
         assert len(nodes) == 3
@@ -227,28 +189,15 @@ class TestHoverTextFormatting:
         assert "Required: No" in hover_text
         assert "Modifiers:" not in hover_text
 
-    def test_format_action_hover(self):
+    def test_format_action_hover(self, multi_ingredient_state):
         """Test action hover formatting."""
-        state = RecipeSessionState()
+        action = multi_ingredient_state.actions[0]
 
-        ingredient1 = Ingredient(name="flour", amount=2.0, unit="cups", modifiers=[], raw_text="2 cups flour")
-        ingredient2 = Ingredient(name="salt", amount=1.0, unit="tsp", modifiers=[], raw_text="1 tsp salt")
-        equipment = Equipment(name="bowl", required=True, modifiers=None)
-
-        state.ingredients = [ingredient1, ingredient2]
-        state.equipment = [equipment]
-
-        action = Action(
-            name="mix",
-            ingredient_ids=[ingredient1.id, ingredient2.id],
-            equipment_id=equipment.id
-        )
-
-        hover_text = _format_action_hover(action, state)
+        hover_text = _format_action_hover(action, multi_ingredient_state)
 
         assert "<b>Action: mix</b>" in hover_text
         assert "Ingredients: flour, salt" in hover_text
-        assert "Equipment: bowl" in hover_text
+        assert "Equipment: mixing bowl" in hover_text
 
 
 class TestForceDirectedPositions:
