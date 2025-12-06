@@ -87,7 +87,7 @@ typer==0.20.0
 typer-slim==0.20.0
 typing-extensions==4.15.0
 tzdata==2025.2
-urllib3==2.5.0
+urllib3==2.6.0
 uvicorn==0.38.0
 virtualenv==20.35.4
 wasabi==1.1.3
